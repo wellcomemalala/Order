@@ -76,6 +76,14 @@
   .move-button {
     background-color: #f39c12;
   }
+  
+  /* เพิ่มสไตล์ปุ่มโต๊ะจองให้เด่นชัด */
+  .reservation-button {
+    background-color: #e74c3c; /* สีแดงเข้ม */
+    color: white;
+    font-weight: bold;
+    border: 2px solid #c0392b;
+  }
 
   .complete-button {
     background-color: #8e44ad; /* Purple for complete */
@@ -467,7 +475,8 @@
 
   <div id="tableButtons">
 
-
+    <!-- เพิ่มปุ่มโต๊ะจองตรงนี้ครับ -->
+    <button class="table-button reservation-button" onclick="saveReservationTable()">โต๊ะจอง (แซงคิว)</button>
 
      <button class="table-button" onclick="saveTable('000')">000</button>
       <button class="table-button" onclick="saveTable('1')">โต๊ะ 1</button>
@@ -579,6 +588,52 @@ function changeTableName(){const b=document.querySelector('button[onclick="chang
 function flashButton(b){if(!b)return;b.classList.remove('flash-red','flash-green');void b.offsetWidth; if(b.classList.contains('save-comment-button') && b.classList.contains('saved')) {b.classList.add('flash-green');} else {b.classList.add('flash-red');}}
 function placeOrder(p){const b=document.querySelector(`button[onclick="placeOrder('${p}')"]`);if(b)flashButton(b);orderCounts[p]++;document.getElementById('quantity'+p).innerText=orderCounts[p];showSelectedItems();saveTemporaryData();}
 function saveTable(t){const b=document.querySelector(`button[onclick="saveTable('${t}')"]`);if(b)flashButton(b);const c=new Date().toISOString();let n=[];for(let i in orderCounts){if(orderCounts[i]>0){n.push({table:t,item:i,quantity:orderCounts[i],comment:menuComments[i]?menuComments[i].trim():'',timestamp:c});totalOrders[i]=(totalOrders[i]||0)+orderCounts[i];orderCounts[i]=0;const e=document.getElementById('quantity'+i);if(e)e.innerText='0';}}if(n.length>0){orders=orders.concat(n);if(!tableOrderQueue.includes(t))tableOrderQueue.push(t);db.ref('orders').set(orders);db.ref('tableOrderQueue').set(tableOrderQueue);db.ref('totalOrders').set(totalOrders);}clearSelectedItems();db.ref('tempData').remove();}
+
+// --- ฟังก์ชันใหม่สำหรับโต๊ะจอง ---
+function saveReservationTable() {
+    // 1. ถามชื่อโต๊ะหรือเบอร์โทร
+    const tableName = prompt("กรุณาระบุชื่อโต๊ะ หรือ เบอร์โทร (จอง):");
+    
+    if (tableName && tableName.trim() !== "") {
+        const finalTableName = tableName.trim() + " (จอง)"; // เติมคำว่า (จอง) ต่อท้ายให้เห็นชัดๆ
+
+        // 2. เคล็ดลับ: สร้างเวลา "ย้อนหลัง" ไป 1 วัน (24 ชั่วโมง)
+        // เพื่อให้เมื่อระบบจัดเรียงตามเวลา ออเดอร์นี้จะมีเวลาเก่าที่สุด และขึ้นไปอยู่บนสุดอัตโนมัติ
+        const priorityTime = new Date(Date.now() - 86400000).toISOString(); 
+
+        let newOrders = [];
+        for (let i in orderCounts) {
+            if (orderCounts[i] > 0) {
+                newOrders.push({
+                    table: finalTableName,
+                    item: i,
+                    quantity: orderCounts[i],
+                    comment: menuComments[i] ? menuComments[i].trim() : '',
+                    timestamp: priorityTime // ใช้เวลาที่โกงไว้เพื่อให้แซงคิว
+                });
+                totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
+                orderCounts[i] = 0;
+                const e = document.getElementById('quantity' + i);
+                if (e) e.innerText = '0';
+            }
+        }
+
+        if (newOrders.length > 0) {
+            orders = orders.concat(newOrders);
+            if (!tableOrderQueue.includes(finalTableName)) tableOrderQueue.push(finalTableName);
+            
+            // บันทึกลง Firebase
+            db.ref('orders').set(orders);
+            db.ref('tableOrderQueue').set(tableOrderQueue);
+            db.ref('totalOrders').set(totalOrders);
+        }
+        
+        clearSelectedItems();
+        db.ref('tempData').remove();
+    }
+}
+// --- จบฟังก์ชันใหม่ ---
+
 function completeOrder(o){completedOrders.push({table:o.table,item:o.item,comment:o.comment||'',timestamp:new Date().toISOString()});if(totalOrders[o.item]){totalOrders[o.item]-=o.quantity;if(totalOrders[o.item]<=0)delete totalOrders[o.item];}const i=orders.findIndex(d=>d.timestamp===o.timestamp&&d.table===o.table&&d.item===o.item);if(i!==-1)orders.splice(i,1);db.ref().update({orders:orders,completedOrders:completedOrders,totalOrders:totalOrders});}
 function syncAllData(){Promise.all([db.ref('orders').once('value'),db.ref('tableOrderQueue').once('value'),db.ref('completedOrders').once('value'),db.ref('totalOrders').once('value'),db.ref('tempData').once('value')]).then(s=>{orders=s[0].exists()?s[0].val()||[]:[];tableOrderQueue=s[1].exists()?s[1].val()||[]:[];completedOrders=s[2].exists()?s[2].val()||[]:[];totalOrders=s[3].exists()?s[3].val()||{}:{};const d=s[4].exists()?s[4].val():null;if(d&&d.orderCounts){for(let i in orderCounts)orderCounts[i]=0;for(let i in d.orderCounts){if(orderCounts.hasOwnProperty(i))orderCounts[i]=d.orderCounts[i];}}menuComments=(d&&d.comments)?d.comments:{};showTableOrders();showCompletedOrders();showTotalOrders();showSelectedItems();console.log("Sync completed.");}).catch(e=>console.error("Sync error: ",e));}
 
