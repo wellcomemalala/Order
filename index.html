@@ -595,7 +595,7 @@ function saveReservationTable() {
     const tableName = prompt("กรุณาระบุชื่อโต๊ะ หรือ เบอร์โทร (จอง):");
     
     if (tableName && tableName.trim() !== "") {
-        const finalTableName = tableName.trim() + " (จอง)"; // เติมคำว่า (จอง) ต่อท้ายให้เห็นชัดๆ
+        const finalTableName = tableName.trim() ; // เติมคำว่า (จอง) ต่อท้ายให้เห็นชัดๆ
 
         // 2. เคล็ดลับ: สร้างเวลา "ย้อนหลัง" ไป 1 วัน (24 ชั่วโมง)
         // เพื่อให้เมื่อระบบจัดเรียงตามเวลา ออเดอร์นี้จะมีเวลาเก่าที่สุด และขึ้นไปอยู่บนสุดอัตโนมัติ
