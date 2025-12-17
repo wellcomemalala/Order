@@ -85,6 +85,43 @@
     border: 2px solid #c0392b;
   }
 
+  /* สไตล์ปุ่มจัดการของหมด */
+  .stock-button {
+    background-color: #555;
+    color: white;
+    border: 2px solid #333;
+  }
+  
+  .stock-mode-active {
+    background-color: #ff9800; /* สีส้ม */
+    color: black;
+    border-color: #e65100;
+    font-weight: bold;
+    animation: pulse 1.5s infinite;
+  }
+  
+  /* สไตล์สำหรับปุ่มที่ของหมด */
+  .sold-out {
+    background-color: #7f8c8d !important; /* สีเทา */
+    opacity: 0.6;
+    text-decoration: line-through;
+    color: #bdc3c7 !important;
+    position: relative;
+  }
+  
+  /* สไตล์ปุ่มเรียกคืน */
+  .undo-button {
+    background-color: #f1c40f; /* สีเหลือง */
+    color: black;
+    font-weight: bold;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
   .complete-button {
     background-color: #8e44ad; /* Purple for complete */
   }
@@ -162,6 +199,21 @@
   #connectionStatus { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 5px; font-size: 12px; z-index: 1000; }
   .connected { background-color: #4CAF50; color: white; }
   .disconnected { background-color: #f44336; color: white; }
+  
+  /* สไตล์สำหรับกล่องปุ่มด้านล่างแบบ ซ้าย-ขวา */
+  .bottom-action-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* แบ่งครึ่งเท่ากัน 50-50 */
+      gap: 30px; /* เว้นระยะห่างตรงกลางให้เยอะหน่อย กันกดผิด */
+      margin-top: 30px;
+      padding: 10px;
+  }
+
+  .clear-button {
+      background-color: #e74c3c; /* สีแดง สำหรับปุ่มล้าง */
+  }
+  
+  
 </style>
 </head>
 <body>
@@ -169,6 +221,12 @@
 <div id="connectionStatus" class="connected">เชื่อมต่อแล้ว</div>
 
 <h1>รับออเดอร์</h1>
+
+<!-- ปุ่มจัดการของหมด -->
+<div style="margin-bottom: 15px;">
+    <button id="stockModeBtn" class="order-button stock-button" onclick="toggleStockMode()" style="width: auto; padding: 10px 20px;">จัดการของหมด (ปิด)</button>
+</div>
+
 <table>
 
     <tbody>
@@ -539,7 +597,25 @@
   </div>
   <div id="totalOrders"></div>
   <div id="completedOrders"></div>
-  <button class="order-button" onclick="clearCompletedOrders()">ล้างรายการที่เสร็จแล้ว</button>
+  
+  <!-- ปุ่มจัดการด้านล่างแบบแบ่งซ้ายขวา -->
+  <div class="bottom-action-container">
+      
+      <!-- ฝั่งซ้าย: ปุ่มเรียกคืน (สีเหลือง) -->
+      <div>
+          <button class="order-button undo-button" onclick="undoLastComplete()">
+             ↩️ เรียกคืนรายการล่าสุด
+          </button>
+      </div>
+
+      <!-- ฝั่งขวา: ปุ่มล้าง (สีแดง) -->
+      <div>
+          <button class="order-button clear-button" onclick="clearCompletedOrders()">
+             🗑️ ล้างรายการที่เสร็จแล้ว
+          </button>
+      </div>
+
+  </div>
 
   <script>
   
@@ -570,12 +646,22 @@ const nonBatchableMenuItems=['ปลาช่อนแป๊ะซะ','ปล�
 let orderCounts={'ผักหวาน':0,'แกงหอย':0,'มะรุม':0,'ผักหวานไข่มดแดง':0,'ขาหมู':0,'ไข่เจียวบาว':0,'ไข่เจียวหมูสับ':0,'ไข่เจียวธรรมดา':0,'ลาบเป็ด':0,'ลาบปลา':0,'ลาบปู':0,'ปลานิลแดดเดียว':0,'ปลาเนื้ออ่อน':0,'หมูทอดสมุนไพร':0,'สะเดาน้ำปลาหวาน':0,'ปลาช่อน นึ่ง':0,'ปลาช่อนแป๊ะซะ':0,'ปลาช่อนแวะถัวะ':0,'แกงบอน':0,'หงษ์ทอง':0,'ผัดเผ็ดหมูป่า':0,'ผัดเผ็ดกระดูกหมู':0,'ไก่น้ำปลา':0,'ไก่ปลาร้า':0,'หมูปลาร้า':0,'ต้มแซ่บไก่':0,'ต้มแซ่บเนื้อ':0,'ต้มแซ่บหมู':0,'ต้มแซ่บกระดูกอ่อน':0,'คั่วไก่':0,'คั่วกบ':0,'คั่วเนื้อ':0,'คั่วหมู':0,'คั่วปลาไหล':0,'แกงไก่หน่อ':0,'แกงปลาหน่อ':0,'ผัดฉ่าขาหมู':0,'อ่อมไก่':0,'อ่อมกบ':0,'อ่อมหมู':0,'อ่อมเนื้อ':0,'อ่อมหอย':0,'แกงป่าผักไก่':0,'แกงป่าผักหมู':0,'แกงป่าผักเนื้อ':0,'แกงป่าผักปลา':0,'แกงป่าหน่อไม้ดองไก่':0,'แกงป่าหน่อไม้ดองหมู':0,'แกงป่าหน่อไม้ดองเนื้อ':0,'แสงโสม':0,'ไข่เจียวไข่มดแดง':0,'ข้าว':0,'กระบุก':0,'ขนม':0,'สามชั้นใบยี่หร่า':0,'เมนูพิเศษ':0,'ของแถม':0,'แกงปลากดหน่อ':0,'แกงหมูหน่อ':0,'แกงเนื้อหน่อ':0,'แกงปลาหลดหน่อ':0,'แกงปลานิลหน่อ':0,'ปลานิล นึ่ง':0,'ปลาทับทิม นึ่ง':0,'ผัดเผ็ดเครื่องใน':0,'คั่วเครื่องใน':0,'อ่อมเครื่องใน':0,'ต้มแซ่บเครื่องใน':0,'แกงป่าผักเครื่องใน':0,'แกงป่าหน่อไม้ดองเครื่องใน':0,'แกงป่าหน่อไม้สดไก่':0,'แกงป่าหน่อไม้สดหมู':0,'แกงป่าหน่อไม้สดเนื้อ':0,'แกงป่าหน่อไม้สดปลา':0,'แกงป่าหน่อไม้สดเครื่องใน':0,'แกงป่าหน่อไม้สดนก':0,'ผัดเผ็ดนกหน่อไม้':0,'อ่อมนก':0,'แกงป่าผักนก':0,'แกงป่าหน่อไม้ดองนก':0,'แกงปลาเนื้ออ่อนหน่อ':0,'หมูน้ำปลา':0,'ผัดเผ็ดนกใบยี่หร่า':0,'หมกหม้อ':0,'ขี้เหล็ก':0,'ต้มจืด':0,'ทอดมัน':0,'หมกปลานิล':0,'ไก่หลงทาง':0,'ผักหวานเห็ดเผาะ':0,'ผักหวานไข่มดแดงใส่เห็ดเผาะ':0};  
 let tableOrderQueue=[],completedOrders=[],totalOrders={},orders=[],menuComments={},saveTimeout=null,waitingTimeInterval=null;
 
+// ตัวแปรสำหรับระบบของหมด
+let isStockMode = false;
+let soldOutMap = {};
+
 window.addEventListener('load',()=>{
 db.ref('orders').on('value',snap=>{orders=snap.exists()?snap.val()||[]:[];showTableOrders();updateWaitingTimes();});
 db.ref('tableOrderQueue').on('value',snap=>{tableOrderQueue=snap.exists()?snap.val()||[]:[];});
 db.ref('completedOrders').on('value',snap=>{completedOrders=snap.exists()?snap.val()||[]:[];showCompletedOrders();});
 db.ref('totalOrders').on('value',snap=>{totalOrders=snap.exists()?snap.val()||{}:{};showTotalOrders();});
 db.ref('tempData').on('value',snap=>{const d=snap.exists()?snap.val():null;if(d&&d.orderCounts){for(let i in orderCounts)orderCounts[i]=0;for(let i in d.orderCounts){if(orderCounts.hasOwnProperty(i)){orderCounts[i]=d.orderCounts[i];const e=document.getElementById('quantity'+i);if(e)e.innerText=orderCounts[i];}}}else{for(let i in orderCounts){orderCounts[i]=0;const e=document.getElementById('quantity'+i);if(e)e.innerText='0';}}menuComments=(d&&d.comments)?d.comments:{};showSelectedItems();});
+// ฟังค่าจาก firebase สำหรับของหมด
+db.ref('soldOutItems').on('value', snap => {
+    soldOutMap = snap.val() || {};
+    updateSoldOutVisuals();
+});
+
 syncAllData();setTimeout(observeTotalOrders,1e3);if(waitingTimeInterval)clearInterval(waitingTimeInterval);waitingTimeInterval=setInterval(updateWaitingTimes,3e4);});
 
 function saveTemporaryData(){db.ref('tempData/orderCounts').set(orderCounts);db.ref('tempData/comments').set(menuComments);}
@@ -586,7 +672,102 @@ function clearSelectedItems(){const b=document.querySelector('#selectedItemsTabl
 function clearCompletedOrders(){completedOrders=[];db.ref('completedOrders').set([]);alert('ล้างรายการที่เสร็จแล้วเรียบร้อยแล้ว');}
 function changeTableName(){const b=document.querySelector('button[onclick="changeTableName()"]');if(b)flashButton(b);const o=document.getElementById('oldTableName').value.trim();const n=document.getElementById('newTableName').value.trim();if(o&&n){orders=orders.map(d=>(d.table===o?{...d,table:n}:d));tableOrderQueue=tableOrderQueue.map(t=>(t===o?n:t));db.ref('orders').set(orders);db.ref('tableOrderQueue').set(tableOrderQueue);document.getElementById('oldTableName').value='';document.getElementById('newTableName').value='';}else{alert('โปรดป้อนชื่อโต๊ะเก่าและใหม่');}}
 function flashButton(b){if(!b)return;b.classList.remove('flash-red','flash-green');void b.offsetWidth; if(b.classList.contains('save-comment-button') && b.classList.contains('saved')) {b.classList.add('flash-green');} else {b.classList.add('flash-red');}}
-function placeOrder(p){const b=document.querySelector(`button[onclick="placeOrder('${p}')"]`);if(b)flashButton(b);orderCounts[p]++;document.getElementById('quantity'+p).innerText=orderCounts[p];showSelectedItems();saveTemporaryData();}
+
+// --- ปรับปรุงฟังก์ชัน placeOrder รองรับของหมด ---
+// --- แก้ไขตรงนี้ ---
+function placeOrder(p){
+    // ถ้าอยู่ในโหมดจัดการของหมด
+    if (isStockMode) {
+        if (soldOutMap[p]) {
+            delete soldOutMap[p]; // ถ้ามีอยู่แล้วให้ลบออก (มีของ)
+        } else {
+            soldOutMap[p] = true; // ถ้ายังไม่มีให้เพิ่ม (ของหมด)
+        }
+        db.ref('soldOutItems').set(soldOutMap); // บันทึกลง Firebase
+        return; // จบการทำงาน ไม่สั่งอาหาร
+    }
+
+    // ถ้าไม่อยู่ในโหมดจัดการ แต่รายการนี้หมด
+    if (soldOutMap[p]) {
+        return; // <--- แก้ตรงนี้ครับ: ลบ alert ออก เหลือแค่ return (กดแล้วเงียบไปเลย)
+    }
+
+    // การทำงานปกติ
+    const b=document.querySelector(`button[onclick="placeOrder('${p}')"]`);
+    if(b)flashButton(b);
+    orderCounts[p]++;
+    document.getElementById('quantity'+p).innerText=orderCounts[p];
+    showSelectedItems();
+    saveTemporaryData();
+}
+
+// ฟังก์ชันเปิด/ปิดโหมดจัดการของหมด
+function toggleStockMode() {
+    isStockMode = !isStockMode;
+    const btn = document.getElementById('stockModeBtn');
+    if(isStockMode) {
+        btn.textContent = "จัดการของหมด (เปิด)";
+        btn.className = "order-button stock-button stock-mode-active";
+        alert("เข้าสู่โหมดจัดการของหมด: กดที่เมนูเพื่อ แจ้งของหมด/มีของ");
+    } else {
+        btn.textContent = "จัดการของหมด (ปิด)";
+        btn.className = "order-button stock-button";
+    }
+}
+
+// ฟังก์ชันอัพเดทหน้าตาปุ่มตามสถานะของหมด
+function updateSoldOutVisuals() {
+    // วนลูปหาปุ่มทั้งหมดที่มี onclick="placeOrder(...)"
+    const allButtons = document.querySelectorAll('button[onclick^="placeOrder"]');
+    allButtons.forEach(btn => {
+        // ดึงชื่อเมนูจาก onclick attribute
+        const match = btn.getAttribute('onclick').match(/placeOrder\('(.+?)'\)/);
+        if (match && match[1]) {
+            const menuName = match[1];
+            if (soldOutMap[menuName]) {
+                btn.classList.add('sold-out');
+            } else {
+                btn.classList.remove('sold-out');
+            }
+        }
+    });
+}
+
+// --- ฟังก์ชันเรียกคืนรายการล่าสุด ---
+function undoLastComplete() {
+    if (!completedOrders || completedOrders.length === 0) {
+        alert("ไม่มีรายการให้เรียกคืน");
+        return;
+    }
+
+    const lastOrder = completedOrders.pop();
+
+    // ใช้เวลาเดิมที่จำไว้ (ถ้ามี) หรือถ้าไม่มีให้ใช้เวลาปัจจุบัน
+    const restoreTime = lastOrder.originalTimestamp || lastOrder.timestamp;
+
+    orders.push({
+        table: lastOrder.table,
+        item: lastOrder.item,
+        quantity: 1,
+        comment: lastOrder.comment,
+        timestamp: restoreTime // <--- ใช้เวลาเดิม เพื่อให้กลับไปอยู่ที่เดิม
+    });
+
+    totalOrders[lastOrder.item] = (totalOrders[lastOrder.item] || 0) + 1;
+
+    // *** หัวใจสำคัญ: จัดเรียงคิวใหม่ทันทีตามเวลา ***
+    orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    db.ref().update({
+        orders: orders,
+        completedOrders: completedOrders,
+        totalOrders: totalOrders
+    });
+
+    // แจ้งเตือนเล็กน้อย (ลบออกได้ถ้ารำคาญ)
+    // alert(`เรียกคืน: ${lastOrder.item} โต๊ะ ${lastOrder.table}`);
+}
+
 function saveTable(t){const b=document.querySelector(`button[onclick="saveTable('${t}')"]`);if(b)flashButton(b);const c=new Date().toISOString();let n=[];for(let i in orderCounts){if(orderCounts[i]>0){n.push({table:t,item:i,quantity:orderCounts[i],comment:menuComments[i]?menuComments[i].trim():'',timestamp:c});totalOrders[i]=(totalOrders[i]||0)+orderCounts[i];orderCounts[i]=0;const e=document.getElementById('quantity'+i);if(e)e.innerText='0';}}if(n.length>0){orders=orders.concat(n);if(!tableOrderQueue.includes(t))tableOrderQueue.push(t);db.ref('orders').set(orders);db.ref('tableOrderQueue').set(tableOrderQueue);db.ref('totalOrders').set(totalOrders);}clearSelectedItems();db.ref('tempData').remove();}
 
 // --- ฟังก์ชันใหม่สำหรับโต๊ะจอง ---
@@ -634,7 +815,30 @@ function saveReservationTable() {
 }
 // --- จบฟังก์ชันใหม่ ---
 
-function completeOrder(o){completedOrders.push({table:o.table,item:o.item,comment:o.comment||'',timestamp:new Date().toISOString()});if(totalOrders[o.item]){totalOrders[o.item]-=o.quantity;if(totalOrders[o.item]<=0)delete totalOrders[o.item];}const i=orders.findIndex(d=>d.timestamp===o.timestamp&&d.table===o.table&&d.item===o.item);if(i!==-1)orders.splice(i,1);db.ref().update({orders:orders,completedOrders:completedOrders,totalOrders:totalOrders});}
+function completeOrder(o) {
+    completedOrders.push({
+        table: o.table,
+        item: o.item,
+        comment: o.comment || '',
+        timestamp: new Date().toISOString(),
+        originalTimestamp: o.timestamp // <--- เพิ่มบรรทัดนี้: จำเวลาสั่งเดิมไว้
+    });
+    
+    if (totalOrders[o.item]) {
+        totalOrders[o.item] -= o.quantity;
+        if (totalOrders[o.item] <= 0) delete totalOrders[o.item];
+    }
+    
+    const i = orders.findIndex(d => d.timestamp === o.timestamp && d.table === o.table && d.item === o.item);
+    if (i !== -1) orders.splice(i, 1);
+    
+    db.ref().update({
+        orders: orders,
+        completedOrders: completedOrders,
+        totalOrders: totalOrders
+    });
+}
+
 function syncAllData(){Promise.all([db.ref('orders').once('value'),db.ref('tableOrderQueue').once('value'),db.ref('completedOrders').once('value'),db.ref('totalOrders').once('value'),db.ref('tempData').once('value')]).then(s=>{orders=s[0].exists()?s[0].val()||[]:[];tableOrderQueue=s[1].exists()?s[1].val()||[]:[];completedOrders=s[2].exists()?s[2].val()||[]:[];totalOrders=s[3].exists()?s[3].val()||{}:{};const d=s[4].exists()?s[4].val():null;if(d&&d.orderCounts){for(let i in orderCounts)orderCounts[i]=0;for(let i in d.orderCounts){if(orderCounts.hasOwnProperty(i))orderCounts[i]=d.orderCounts[i];}}menuComments=(d&&d.comments)?d.comments:{};showTableOrders();showCompletedOrders();showTotalOrders();showSelectedItems();console.log("Sync completed.");}).catch(e=>console.error("Sync error: ",e));}
 
 function showTableOrders() {
@@ -660,30 +864,26 @@ function showTableOrders() {
 
         const saveCommentBtn = document.createElement('button');
         saveCommentBtn.textContent = 'บันทึก';
-        saveCommentBtn.className = 'save-comment-button'; // Default blue
-        // If the current comment in input matches the one in `order` (meaning it's "saved" or unchanged)
-        // We might need a more robust way to track "saved" state if edits happen outside this direct flow.
-        // For now, let's assume it starts as "needs save" (blue) unless explicitly marked.
-        // We can add a data attribute to the button or input to track saved state more explicitly if needed.
+        saveCommentBtn.className = 'save-comment-button';
 
-        commentInput.oninput = () => { // When user types
-            saveCommentBtn.classList.remove('saved'); // Revert to blue, needs saving
-            saveCommentBtn.classList.remove('flash-green'); // Remove flash effect
+        commentInput.oninput = () => {
+            saveCommentBtn.classList.remove('saved');
+            saveCommentBtn.classList.remove('flash-green');
         };
 
         saveCommentBtn.onclick = () => {
             const newComment = commentInput.value.trim();
             const orderInMainArray = orders.find(o => o.timestamp === order.timestamp && o.table === order.table && o.item === order.item);
             if (orderInMainArray) {
-                if (orderInMainArray.comment !== newComment) { // Only save if changed
+                if (orderInMainArray.comment !== newComment) {
                     orderInMainArray.comment = newComment;
                     db.ref('orders').set(orders).then(() => {
-                        saveCommentBtn.classList.add('saved'); // Change to green
-                        flashButton(saveCommentBtn); // Flash green
+                        saveCommentBtn.classList.add('saved');
+                        flashButton(saveCommentBtn);
                     }).catch(e => console.error("Error saving comment:", e));
-                } else { // If no change, still indicate "saved"
+                } else {
                     saveCommentBtn.classList.add('saved');
-                     flashButton(saveCommentBtn); // Flash green to confirm
+                    flashButton(saveCommentBtn);
                 }
             }
         };
@@ -699,12 +899,26 @@ function showTableOrders() {
         completeButton.onclick = () => {
             const orderToProcess = JSON.parse(JSON.stringify(order));
             if (orderToProcess.quantity > 1) {
-                completedOrders.push({table:orderToProcess.table,item:orderToProcess.item,comment:orderToProcess.comment||'',timestamp:new Date().toISOString()});
-                const originalOrder = orders.find(o=>o.timestamp===orderToProcess.timestamp&&o.table===orderToProcess.table&&o.item===orderToProcess.item);
-                if(originalOrder){
+                // กรณีตัดยอดทีละ 1 (จากหลายจาน)
+                completedOrders.push({
+                    table: orderToProcess.table,
+                    item: orderToProcess.item,
+                    comment: orderToProcess.comment || '',
+                    timestamp: new Date().toISOString(),
+                    originalTimestamp: orderToProcess.timestamp // <--- เพิ่มตรงนี้ด้วยครับ
+                });
+                const originalOrder = orders.find(o => o.timestamp === orderToProcess.timestamp && o.table === orderToProcess.table && o.item === orderToProcess.item);
+                if (originalOrder) {
                     originalOrder.quantity--;
-                    if(totalOrders[originalOrder.item]){totalOrders[originalOrder.item]-=1;if(totalOrders[originalOrder.item]<=0)delete totalOrders[originalOrder.item];}
-                    db.ref().update({orders:orders,completedOrders:completedOrders,totalOrders:totalOrders});
+                    if (totalOrders[originalOrder.item]) {
+                        totalOrders[originalOrder.item] -= 1;
+                        if (totalOrders[originalOrder.item] <= 0) delete totalOrders[originalOrder.item];
+                    }
+                    db.ref().update({
+                        orders: orders,
+                        completedOrders: completedOrders,
+                        totalOrders: totalOrders
+                    });
                 }
             } else {
                 completeOrder(orderToProcess);
@@ -714,6 +928,7 @@ function showTableOrders() {
     });
     updateWaitingTimes();
 }
+
 
 function updateWaitingTimes() {
     const rows = document.querySelectorAll('#tableOrdersTable tbody tr');
