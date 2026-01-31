@@ -214,6 +214,70 @@
   }
   
   
+
+#syncStatusBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 9999;
+    font-size: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+#syncStatusBar .status-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#syncStatusBar .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+#syncStatusBar .status-indicator.synced {
+    background-color: #4CAF50;
+}
+
+#syncStatusBar .status-indicator.syncing {
+    background-color: #FFC107;
+}
+
+#syncStatusBar .status-indicator.offline {
+    background-color: #F44336;
+}
+
+#syncStatusBar .status-text {
+    font-weight: 500;
+}
+
+#syncStatusBar .status-right {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+/* เลื่อน body ลงเพื่อไม่ให้ซ้อนกับ sync bar */
+body {
+    padding-top: 45px;
+}
+
+  
 </style>
 </head>
 <body>
@@ -550,6 +614,19 @@
 		
 		
     </tbody>
+	
+	<div id="syncStatusBar">
+    <div class="status-left">
+        <div class="status-indicator synced" id="syncIndicator"></div>
+        <span class="status-text" id="syncStatusText">ซิงค์แล้ว</span>
+    </div>
+    <div class="status-right">
+
+    </div>
+</div>
+
+
+
 </table>
 
 
@@ -657,344 +734,353 @@
 
   </div>
 
-  <script>
-  
-  
-   // Firebase configuration
-   
-        const firebaseConfig = {
-  apiKey: "AIzaSyDskwJlUNbr3zkKnyY_-n582PdoCrts2AE",
-  authDomain: "supertest01-55ac2.firebaseapp.com",
-  databaseURL: "https://supertest01-55ac2-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "supertest01-55ac2",
-  storageBucket: "supertest01-55ac2.firebasestorage.app",
-  messagingSenderId: "846236839338",
-  appId: "1:846236839338:web:260ca9b6af72c69837cfd3",
-  measurementId: "G-F26Z20XG62"
+ <script>
+// 1. Firebase Configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDskwJlUNbr3zkKnyY_-n582PdoCrts2AE",
+    authDomain: "supertest01-55ac2.firebaseapp.com",
+    databaseURL: "https://supertest01-55ac2-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "supertest01-55ac2",
+    storageBucket: "supertest01-55ac2.firebasestorage.app",
+    messagingSenderId: "846236839338",
+    appId: "1:846236839338:web:260ca9b6af72c69837cfd3",
+    measurementId: "G-F26Z20XG62"
 };
-
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const connectedRef = db.ref(".info/connected");
-const connectionStatus = document.getElementById('connectionStatus');
-connectedRef.on("value",snap=>{connectionStatus.textContent=snap.val()?"เชื่อมต่อแล้ว":"ไม่มีการเชื่อมต่อ";connectionStatus.className=snap.val()?"connected":"disconnected";});
-
+// 2. Data State
 const chefMenus={'kik':['ต้มแซ่บ','คั่ว','ผักหวาน','แป๊ะซะ','แวะถัวะ','ผัดเผ็ด','อ่อม','แกงป่าผัก','แกงป่าหน่อไม้ดอง','แกงป่าหน่อไม้สด','บอน','มะรุม','กระบุก','แกงไก่หน่อ','แกงหมูหน่อ','แกงเนื้อหน่อ','แกงปลา','ผัดฉ่า','ปลาร้า','ไก่น้ำปลา','สามชั้น','หมูน้ำปลา','โสม','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ'],'jeab':['ไข่เจียว','แกงหอย','พิเศษ','ทอง','แถม','หมกหม้อ','ขี้เหล็ก','ต้มจืด','ทอดมัน','หมกปลานิล','ไก่หลงทาง'],'nan':['ขาหมู','ข้าว','ขนม','นึ่ง'],'see':['ลาบ','ปลาเนื้ออ่อน','ปลานิลแดดเดียว','สมุนไพร','สะเดาน้ำปลาหวาน','ตำ']};
 const nonBatchableMenuItems=['ปลาช่อนแป๊ะซะ','ปลาช่อนแวะถัวะ','อ่อมหมู','ผักหวานไข่มดแดง','ผักหวาน','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ','ไข่เจียวบาว','ไข่เจียวธรรมดา','ไข่เจียวหมูสับ','ไข่เจียวไข่มดแดง'];
-let orderCounts={'ผักหวาน':0,'แกงหอย':0,'มะรุม':0,'ผักหวานไข่มดแดง':0,'ขาหมู':0,'ไข่เจียวบาว':0,'ไข่เจียวหมูสับ':0,'ไข่เจียวธรรมดา':0,'ลาบเป็ด':0,'ลาบปลา':0,'ลาบปู':0,'ปลานิลแดดเดียว':0,'ปลาเนื้ออ่อน':0,'หมูทอดสมุนไพร':0,'สะเดาน้ำปลาหวาน':0,'ปลาช่อน นึ่ง':0,'ปลาช่อนแป๊ะซะ':0,'ปลาช่อนแวะถัวะ':0,'แกงบอน':0,'หงษ์ทอง':0,'ผัดเผ็ดหมูป่า':0,'ผัดเผ็ดกระดูกหมู':0,'ไก่น้ำปลา':0,'ไก่ปลาร้า':0,'หมูปลาร้า':0,'ต้มแซ่บไก่':0,'ต้มแซ่บเนื้อ':0,'ต้มแซ่บหมู':0,'ต้มแซ่บกระดูกอ่อน':0,'คั่วไก่':0,'คั่วกบ':0,'คั่วเนื้อ':0,'คั่วหมู':0,'คั่วปลาไหล':0,'แกงไก่หน่อ':0,'แกงปลาหน่อ':0,'ผัดฉ่าขาหมู':0,'อ่อมไก่':0,'อ่อมกบ':0,'อ่อมหมู':0,'อ่อมเนื้อ':0,'อ่อมหอย':0,'แกงป่าผักไก่':0,'แกงป่าผักหมู':0,'แกงป่าผักเนื้อ':0,'แกงป่าผักปลา':0,'แกงป่าหน่อไม้ดองไก่':0,'แกงป่าหน่อไม้ดองหมู':0,'แกงป่าหน่อไม้ดองเนื้อ':0,'แสงโสม':0,'ไข่เจียวไข่มดแดง':0,'ข้าว':0,'กระบุก':0,'ขนม':0,'สามชั้นใบยี่หร่า':0,'เมนูพิเศษ':0,'ของแถม':0,'แกงปลากดหน่อ':0,'แกงหมูหน่อ':0,'แกงเนื้อหน่อ':0,'แกงปลาหลดหน่อ':0,'แกงปลานิลหน่อ':0,'ปลานิล นึ่ง':0,'ปลาทับทิม นึ่ง':0,'ผัดเผ็ดเครื่องใน':0,'คั่วเครื่องใน':0,'อ่อมเครื่องใน':0,'ต้มแซ่บเครื่องใน':0,'แกงป่าผักเครื่องใน':0,'แกงป่าหน่อไม้ดองเครื่องใน':0,'แกงป่าหน่อไม้สดไก่':0,'แกงป่าหน่อไม้สดหมู':0,'แกงป่าหน่อไม้สดเนื้อ':0,'แกงป่าหน่อไม้สดปลา':0,'แกงป่าหน่อไม้สดเครื่องใน':0,'แกงป่าหน่อไม้สดนก':0,'ผัดเผ็ดนกหน่อไม้':0,'อ่อมนก':0,'แกงป่าผักนก':0,'แกงป่าหน่อไม้ดองนก':0,'แกงปลาเนื้ออ่อนหน่อ':0,'หมูน้ำปลา':0,'ผัดเผ็ดนกใบยี่หร่า':0,'หมกหม้อ':0,'ขี้เหล็ก':0,'ต้มจืด':0,'ทอดมัน':0,'หมกปลานิล':0,'ไก่หลงทาง':0,'ผักหวานเห็ดเผาะ':0,'ผักหวานไข่มดแดงใส่เห็ดเผาะ':0,'ตำลาว':0,'ตำปูปลาล้าปูนิ่ง':0,'ตำปูปลาล้าปูดอง':0,'ตำแตง':0,'ตำถั่ว':0,'ตำไทย':0,'ตำโคราช':0,'ตำซั่ว':0,'ตำป่า':0,'ตำหมูยอ':0,'ตำมาม่า':0,'ตำไทยไข่เค็ม':0,'ตำโพดไข่เค็ม':0,'ตำกุ้งสด':0,'ตำกุ้งสุกกกก':0,'ตำทะเล':0};  
-let tableOrderQueue=[],completedOrders=[],totalOrders={},orders=[],menuComments={},saveTimeout=null,waitingTimeInterval=null;
 
-// ตัวแปรสำหรับระบบของหมด
-let isStockMode = false;
-let soldOutMap = {};
+let orderCounts = {};
+let menuComments = {};
+let orders = [], completedOrders = [], totalOrders = {}, soldOutMap = {};
+let isSyncing = false, isStockMode = false, saveTimeout = null;
 
-window.addEventListener('load',()=>{
-db.ref('orders').on('value',snap=>{orders=snap.exists()?snap.val()||[]:[];showTableOrders();updateWaitingTimes();});
-db.ref('tableOrderQueue').on('value',snap=>{tableOrderQueue=snap.exists()?snap.val()||[]:[];});
-db.ref('completedOrders').on('value',snap=>{completedOrders=snap.exists()?snap.val()||[]:[];showCompletedOrders();});
-db.ref('totalOrders').on('value',snap=>{totalOrders=snap.exists()?snap.val()||{}:{};showTotalOrders();});
-db.ref('tempData').on('value',snap=>{const d=snap.exists()?snap.val():null;if(d&&d.orderCounts){for(let i in orderCounts)orderCounts[i]=0;for(let i in d.orderCounts){if(orderCounts.hasOwnProperty(i)){orderCounts[i]=d.orderCounts[i];const e=document.getElementById('quantity'+i);if(e)e.innerText=orderCounts[i];}}}else{for(let i in orderCounts){orderCounts[i]=0;const e=document.getElementById('quantity'+i);if(e)e.innerText='0';}}menuComments=(d&&d.comments)?d.comments:{};showSelectedItems();});
-// ฟังค่าจาก firebase สำหรับของหมด
-db.ref('soldOutItems').on('value', snap => {
-    soldOutMap = snap.val() || {};
-    updateSoldOutVisuals();
-});
+const LS_PREFIX = 'kaki_';
+const LS_KEYS = { ORDERS: LS_PREFIX + 'orders', COMPLETED: LS_PREFIX + 'completed', TOTAL: LS_PREFIX + 'total', TEMP: LS_PREFIX + 'temp' };
 
-syncAllData();setTimeout(observeTotalOrders,1e3);if(waitingTimeInterval)clearInterval(waitingTimeInterval);waitingTimeInterval=setInterval(updateWaitingTimes,3e4);});
+// 3. Helper Functions
+function saveToLocalStorage(key, data) {
+    try { localStorage.setItem(key, JSON.stringify({ data: data, time: Date.now() })); } catch (e) {}
+}
 
-function saveTemporaryData(){db.ref('tempData/orderCounts').set(orderCounts);db.ref('tempData/comments').set(menuComments);}
-function showSelectedItems(){const b=document.querySelector('#selectedItemsTable tbody');b.innerHTML='';for(let i in orderCounts){if(orderCounts[i]>0){const r=b.insertRow();r.insertCell().textContent=i;r.insertCell().textContent=orderCounts[i];const a=r.insertCell();const d=document.createElement('button');d.textContent='-';d.onclick=()=>decrementOrderCount(i);a.appendChild(d);const n=document.createElement('button');n.textContent='+';n.onclick=()=>incrementOrderCount(i);a.appendChild(n);const c=r.insertCell();const m=document.createElement('input');m.type='text';m.placeholder='คอมเมนต์';m.className='comment-input-selected';m.value=menuComments[i]||'';m.oninput=e=>{menuComments[i]=e.target.value;if(saveTimeout)clearTimeout(saveTimeout);saveTimeout=setTimeout(saveTemporaryData,1500);};c.appendChild(m);}}}
-function incrementOrderCount(i){orderCounts[i]++;document.getElementById('quantity'+i).innerText=orderCounts[i];showSelectedItems();saveTemporaryData();}
-function decrementOrderCount(i){if(orderCounts[i]>0){orderCounts[i]--;document.getElementById('quantity'+i).innerText=orderCounts[i];showSelectedItems();saveTemporaryData();}}
-function clearSelectedItems(){const b=document.querySelector('#selectedItemsTable tbody');if(b)b.innerHTML='';for(let i in orderCounts){orderCounts[i]=0;const e=document.getElementById('quantity'+i);if(e)e.innerText='0';}menuComments={};}
-function clearCompletedOrders(){completedOrders=[];db.ref('completedOrders').set([]);alert('ล้างรายการที่เสร็จแล้วเรียบร้อยแล้ว');}
-function changeTableName(){const b=document.querySelector('button[onclick="changeTableName()"]');if(b)flashButton(b);const o=document.getElementById('oldTableName').value.trim();const n=document.getElementById('newTableName').value.trim();if(o&&n){orders=orders.map(d=>(d.table===o?{...d,table:n}:d));tableOrderQueue=tableOrderQueue.map(t=>(t===o?n:t));db.ref('orders').set(orders);db.ref('tableOrderQueue').set(tableOrderQueue);document.getElementById('oldTableName').value='';document.getElementById('newTableName').value='';}else{alert('โปรดป้อนชื่อโต๊ะเก่าและใหม่');}}
-function flashButton(b){if(!b)return;b.classList.remove('flash-red','flash-green');void b.offsetWidth; if(b.classList.contains('save-comment-button') && b.classList.contains('saved')) {b.classList.add('flash-green');} else {b.classList.add('flash-red');}}
+function loadFromLocalStorage(key) {
+    try { const item = localStorage.getItem(key); return item ? JSON.parse(item).data : null; } catch (e) { return null; }
+}
 
-// --- ปรับปรุงฟังก์ชัน placeOrder รองรับของหมด ---
-// --- แก้ไขตรงนี้ ---
-function placeOrder(p){
-    // ถ้าอยู่ในโหมดจัดการของหมด
+function flashButton(b, colorClass = 'flash-red') { 
+    if(b) { b.classList.add(colorClass); setTimeout(()=>b.classList.remove(colorClass), 200); } 
+}
+
+// 4. Core App Logic
+function placeOrder(p) {
     if (isStockMode) {
-        if (soldOutMap[p]) {
-            delete soldOutMap[p]; // ถ้ามีอยู่แล้วให้ลบออก (มีของ)
-        } else {
-            soldOutMap[p] = true; // ถ้ายังไม่มีให้เพิ่ม (ของหมด)
-        }
-        db.ref('soldOutItems').set(soldOutMap); // บันทึกลง Firebase
-        return; // จบการทำงาน ไม่สั่งอาหาร
+        soldOutMap[p] = !soldOutMap[p];
+        db.ref('soldOutItems').set(soldOutMap);
+        return;
     }
-
-    // ถ้าไม่อยู่ในโหมดจัดการ แต่รายการนี้หมด
-    if (soldOutMap[p]) {
-        return; // <--- แก้ตรงนี้ครับ: ลบ alert ออก เหลือแค่ return (กดแล้วเงียบไปเลย)
-    }
-
-    // การทำงานปกติ
-    const b=document.querySelector(`button[onclick="placeOrder('${p}')"]`);
-    if(b)flashButton(b);
-    orderCounts[p]++;
-    document.getElementById('quantity'+p).innerText=orderCounts[p];
-    showSelectedItems();
+    if (soldOutMap[p]) return;
+    const b = document.querySelector(`button[onclick="placeOrder('${p}')"]`);
+    flashButton(b);
+    orderCounts[p] = (orderCounts[p] || 0) + 1;
+    document.getElementById('quantity' + p).innerText = orderCounts[p];
+    showSelectedItems(); // วาดตารางเลือกอาหารใหม่
     saveTemporaryData();
 }
 
-// ฟังก์ชันเปิด/ปิดโหมดจัดการของหมด
-function toggleStockMode() {
-    isStockMode = !isStockMode;
-    const btn = document.getElementById('stockModeBtn');
-    if(isStockMode) {
-        btn.textContent = "จัดการของหมด (เปิด)";
-        btn.className = "order-button stock-button stock-mode-active";
-        alert("เข้าสู่โหมดจัดการของหมด: กดที่เมนูเพื่อ แจ้งของหมด/มีของ");
-    } else {
-        btn.textContent = "จัดการของหมด (ปิด)";
-        btn.className = "order-button stock-button";
-    }
+function saveTemporaryData() {
+    const tempData = { orderCounts, comments: menuComments };
+    saveToLocalStorage(LS_KEYS.TEMP, tempData);
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        if (navigator.onLine) db.ref('tempData').set(tempData);
+    }, 1000);
 }
 
-// ฟังก์ชันอัพเดทหน้าตาปุ่มตามสถานะของหมด
-function updateSoldOutVisuals() {
-    // วนลูปหาปุ่มทั้งหมดที่มี onclick="placeOrder(...)"
-    const allButtons = document.querySelectorAll('button[onclick^="placeOrder"]');
-    allButtons.forEach(btn => {
-        // ดึงชื่อเมนูจาก onclick attribute
-        const match = btn.getAttribute('onclick').match(/placeOrder\('(.+?)'\)/);
-        if (match && match[1]) {
-            const menuName = match[1];
-            if (soldOutMap[menuName]) {
-                btn.classList.add('sold-out');
-            } else {
-                btn.classList.remove('sold-out');
-            }
-        }
-    });
-}
-
-// --- ฟังก์ชันเรียกคืนรายการล่าสุด ---
-function undoLastComplete() {
-    if (!completedOrders || completedOrders.length === 0) {
-        alert("ไม่มีรายการให้เรียกคืน");
-        return;
-    }
-
-    const lastOrder = completedOrders.pop();
-
-    // ใช้เวลาเดิมที่จำไว้ (ถ้ามี) หรือถ้าไม่มีให้ใช้เวลาปัจจุบัน
-    const restoreTime = lastOrder.originalTimestamp || lastOrder.timestamp;
-
-    orders.push({
-        table: lastOrder.table,
-        item: lastOrder.item,
-        quantity: 1,
-        comment: lastOrder.comment,
-        timestamp: restoreTime // <--- ใช้เวลาเดิม เพื่อให้กลับไปอยู่ที่เดิม
-    });
-
-    totalOrders[lastOrder.item] = (totalOrders[lastOrder.item] || 0) + 1;
-
-    // *** หัวใจสำคัญ: จัดเรียงคิวใหม่ทันทีตามเวลา ***
-    orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-    db.ref().update({
-        orders: orders,
-        completedOrders: completedOrders,
-        totalOrders: totalOrders
-    });
-
-    // แจ้งเตือนเล็กน้อย (ลบออกได้ถ้ารำคาญ)
-    // alert(`เรียกคืน: ${lastOrder.item} โต๊ะ ${lastOrder.table}`);
-}
-
-function saveTable(t){const b=document.querySelector(`button[onclick="saveTable('${t}')"]`);if(b)flashButton(b);const c=new Date().toISOString();let n=[];for(let i in orderCounts){if(orderCounts[i]>0){n.push({table:t,item:i,quantity:orderCounts[i],comment:menuComments[i]?menuComments[i].trim():'',timestamp:c});totalOrders[i]=(totalOrders[i]||0)+orderCounts[i];orderCounts[i]=0;const e=document.getElementById('quantity'+i);if(e)e.innerText='0';}}if(n.length>0){orders=orders.concat(n);if(!tableOrderQueue.includes(t))tableOrderQueue.push(t);db.ref('orders').set(orders);db.ref('tableOrderQueue').set(tableOrderQueue);db.ref('totalOrders').set(totalOrders);}clearSelectedItems();db.ref('tempData').remove();}
-
-// --- ฟังก์ชันใหม่สำหรับโต๊ะจอง ---
-function saveReservationTable() {
-    // 1. ถามชื่อโต๊ะหรือเบอร์โทร
-    const tableName = prompt("กรุณาระบุชื่อโต๊ะ หรือ เบอร์โทร (จอง):");
-    
-    if (tableName && tableName.trim() !== "") {
-        const finalTableName = tableName.trim() ; // เติมคำว่า (จอง) ต่อท้ายให้เห็นชัดๆ
-
-        // 2. เคล็ดลับ: สร้างเวลา "ย้อนหลัง" ไป 1 วัน (24 ชั่วโมง)
-        // เพื่อให้เมื่อระบบจัดเรียงตามเวลา ออเดอร์นี้จะมีเวลาเก่าที่สุด และขึ้นไปอยู่บนสุดอัตโนมัติ
-        const priorityTime = new Date(Date.now() - 86400000).toISOString(); 
-
-        let newOrders = [];
-        for (let i in orderCounts) {
-            if (orderCounts[i] > 0) {
-                newOrders.push({
-                    table: finalTableName,
-                    item: i,
-                    quantity: orderCounts[i],
-                    comment: menuComments[i] ? menuComments[i].trim() : '',
-                    timestamp: priorityTime // ใช้เวลาที่โกงไว้เพื่อให้แซงคิว
-                });
-                totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
-                orderCounts[i] = 0;
-                const e = document.getElementById('quantity' + i);
-                if (e) e.innerText = '0';
-            }
-        }
-
-        if (newOrders.length > 0) {
-            orders = orders.concat(newOrders);
-            if (!tableOrderQueue.includes(finalTableName)) tableOrderQueue.push(finalTableName);
-            
-            // บันทึกลง Firebase
-            db.ref('orders').set(orders);
-            db.ref('tableOrderQueue').set(tableOrderQueue);
-            db.ref('totalOrders').set(totalOrders);
-        }
-        
-        clearSelectedItems();
-        db.ref('tempData').remove();
-    }
-}
-// --- จบฟังก์ชันใหม่ ---
-
-function completeOrder(o) {
-    completedOrders.push({
-        table: o.table,
-        item: o.item,
-        comment: o.comment || '',
-        timestamp: new Date().toISOString(),
-        originalTimestamp: o.timestamp // <--- เพิ่มบรรทัดนี้: จำเวลาสั่งเดิมไว้
-    });
-    
-    if (totalOrders[o.item]) {
-        totalOrders[o.item] -= o.quantity;
-        if (totalOrders[o.item] <= 0) delete totalOrders[o.item];
-    }
-    
-    const i = orders.findIndex(d => d.timestamp === o.timestamp && d.table === o.table && d.item === o.item);
-    if (i !== -1) orders.splice(i, 1);
-    
-    db.ref().update({
-        orders: orders,
-        completedOrders: completedOrders,
-        totalOrders: totalOrders
-    });
-}
-
-function syncAllData(){Promise.all([db.ref('orders').once('value'),db.ref('tableOrderQueue').once('value'),db.ref('completedOrders').once('value'),db.ref('totalOrders').once('value'),db.ref('tempData').once('value')]).then(s=>{orders=s[0].exists()?s[0].val()||[]:[];tableOrderQueue=s[1].exists()?s[1].val()||[]:[];completedOrders=s[2].exists()?s[2].val()||[]:[];totalOrders=s[3].exists()?s[3].val()||{}:{};const d=s[4].exists()?s[4].val():null;if(d&&d.orderCounts){for(let i in orderCounts)orderCounts[i]=0;for(let i in d.orderCounts){if(orderCounts.hasOwnProperty(i))orderCounts[i]=d.orderCounts[i];}}menuComments=(d&&d.comments)?d.comments:{};showTableOrders();showCompletedOrders();showTotalOrders();showSelectedItems();console.log("Sync completed.");}).catch(e=>console.error("Sync error: ",e));}
-
-function showTableOrders() {
-    const tbody = document.querySelector('#tableOrdersTable tbody');
+function showSelectedItems() {
+    const tbody = document.querySelector('#selectedItemsTable tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    if (!orders || orders.length === 0) return;
+    for (let i in orderCounts) {
+        if (orderCounts[i] > 0) {
+            const r = tbody.insertRow();
+            r.insertCell().textContent = i;
+            r.insertCell().textContent = orderCounts[i];
+            const a = r.insertCell();
+            a.innerHTML = `<button onclick="decrementOrderCount('${i}')">-</button> <button onclick="incrementOrderCount('${i}')">+</button>`;
+            const c = r.insertCell();
+            const input = document.createElement('input');
+            input.type = 'text'; input.className = 'comment-input-selected'; 
+            input.value = menuComments[i] || '';
+            input.placeholder = 'คอมเมนต์...';
+            // แก้ไขปัญหา "เด้ง": ไม่อนุญาตให้ Re-render ตารางขณะพิมพ์
+            input.oninput = (e) => { 
+                menuComments[i] = e.target.value; 
+                saveTemporaryData(); 
+            };
+            c.appendChild(input);
+        }
+    }
+}
 
-    const sortedOrders = [...orders].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+function incrementOrderCount(i) { orderCounts[i]++; document.getElementById('quantity'+i).innerText = orderCounts[i]; showSelectedItems(); saveTemporaryData(); }
+function decrementOrderCount(i) { if(orderCounts[i]>0) { orderCounts[i]--; document.getElementById('quantity'+i).innerText = orderCounts[i]; showSelectedItems(); saveTemporaryData(); } }
 
-    sortedOrders.forEach((order) => {
-        const row = tbody.insertRow();
-        row.insertCell().textContent = 'โต๊ะ ' + order.table;
-        row.insertCell().textContent = order.item;
-        row.insertCell().textContent = order.quantity;
+function clearSelectedItems() {
+    for (let i in orderCounts) { orderCounts[i] = 0; if(document.getElementById('quantity'+i)) document.getElementById('quantity'+i).innerText = '0'; }
+    menuComments = {};
+    showSelectedItems();
+    db.ref('tempData').remove();
+    localStorage.removeItem(LS_KEYS.TEMP);
+}
 
-        const commentCell = row.insertCell();
-        const commentInput = document.createElement('input');
-        commentInput.type = 'text';
-        commentInput.className = 'comment-input-queue';
-        commentInput.value = order.comment || '';
-        commentInput.placeholder = 'เพิ่ม/แก้ คอมเมนต์';
-        commentCell.appendChild(commentInput);
+function saveTable(t) {
+    const now = new Date().toISOString();
+    let newItems = [];
+    for (let i in orderCounts) {
+        if (orderCounts[i] > 0) {
+            newItems.push({ table: t, item: i, quantity: orderCounts[i], comment: (menuComments[i] || '').trim(), timestamp: now });
+            totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
+        }
+    }
+    if (newItems.length > 0) {
+        orders = orders.concat(newItems);
+        db.ref().update({ orders, totalOrders });
+        saveToLocalStorage(LS_KEYS.ORDERS, orders);
+        clearSelectedItems();
+    }
+}
 
-        const saveCommentBtn = document.createElement('button');
-        saveCommentBtn.textContent = 'บันทึก';
-        saveCommentBtn.className = 'save-comment-button';
+function saveReservationTable() {
+    const tName = prompt("ชื่อโต๊ะ/เบอร์โทร (จอง):");
+    if (!tName || tName.trim() === "") return;
+    const now = new Date(Date.now() - 86400000).toISOString(); 
+    let newItems = [];
+    for (let i in orderCounts) {
+        if (orderCounts[i] > 0) {
+            newItems.push({ table: tName.trim(), item: i, quantity: orderCounts[i], comment: (menuComments[i] || '').trim(), timestamp: now });
+            totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
+        }
+    }
+    if (newItems.length > 0) {
+        orders = orders.concat(newItems);
+        db.ref().update({ orders, totalOrders });
+        clearSelectedItems();
+    }
+}
 
-        commentInput.oninput = () => {
-            saveCommentBtn.classList.remove('saved');
-            saveCommentBtn.classList.remove('flash-green');
-        };
-
-        saveCommentBtn.onclick = () => {
-            const newComment = commentInput.value.trim();
-            const orderInMainArray = orders.find(o => o.timestamp === order.timestamp && o.table === order.table && o.item === order.item);
-            if (orderInMainArray) {
-                if (orderInMainArray.comment !== newComment) {
-                    orderInMainArray.comment = newComment;
-                    db.ref('orders').set(orders).then(() => {
-                        saveCommentBtn.classList.add('saved');
-                        flashButton(saveCommentBtn);
-                    }).catch(e => console.error("Error saving comment:", e));
-                } else {
-                    saveCommentBtn.classList.add('saved');
-                    flashButton(saveCommentBtn);
-                }
-            }
-        };
-        commentCell.appendChild(saveCommentBtn);
-
-        const waitingTimeCell = row.insertCell();
-        waitingTimeCell.className = 'waiting-time-cell';
-
-        const completeCell = row.insertCell();
-        const completeButton = document.createElement('button');
-        completeButton.className = 'order-button complete-button';
-        completeButton.textContent = 'ส่ง';
-        completeButton.onclick = () => {
-            const orderToProcess = JSON.parse(JSON.stringify(order));
-            if (orderToProcess.quantity > 1) {
-                // กรณีตัดยอดทีละ 1 (จากหลายจาน)
-                completedOrders.push({
-                    table: orderToProcess.table,
-                    item: orderToProcess.item,
-                    comment: orderToProcess.comment || '',
-                    timestamp: new Date().toISOString(),
-                    originalTimestamp: orderToProcess.timestamp // <--- เพิ่มตรงนี้ด้วยครับ
+// 5. Order Queue Logic
+function showTableOrders() {
+    const tbody = document.querySelector('#tableOrdersTable tbody'); if (!tbody) return;
+    tbody.innerHTML = '';
+    const sorted = [...orders].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    sorted.forEach((o) => {
+        const r = tbody.insertRow();
+        r.insertCell().textContent = 'โต๊ะ ' + o.table;
+        r.insertCell().textContent = o.item;
+        r.insertCell().textContent = o.quantity;
+        
+        const cCell = r.insertCell();
+        const input = document.createElement('input');
+        input.type = 'text'; input.className = 'comment-input-queue'; input.value = o.comment || '';
+        const btn = document.createElement('button');
+        btn.textContent = 'บันทึก'; btn.className = 'save-comment-button';
+        btn.onclick = () => {
+            const target = orders.find(x => x.timestamp === o.timestamp && x.item === o.item);
+            if (target) {
+                target.comment = input.value.trim();
+                db.ref('orders').set(orders).then(() => {
+                    btn.classList.add('saved');
+                    flashButton(btn, 'flash-green');
                 });
-                const originalOrder = orders.find(o => o.timestamp === orderToProcess.timestamp && o.table === orderToProcess.table && o.item === orderToProcess.item);
-                if (originalOrder) {
-                    originalOrder.quantity--;
-                    if (totalOrders[originalOrder.item]) {
-                        totalOrders[originalOrder.item] -= 1;
-                        if (totalOrders[originalOrder.item] <= 0) delete totalOrders[originalOrder.item];
-                    }
-                    db.ref().update({
-                        orders: orders,
-                        completedOrders: completedOrders,
-                        totalOrders: totalOrders
-                    });
-                }
-            } else {
-                completeOrder(orderToProcess);
             }
         };
-        completeCell.appendChild(completeButton);
+        cCell.appendChild(input); cCell.appendChild(btn);
+
+        const wc = r.insertCell(); wc.className = 'waiting-time-cell';
+        const cc = r.insertCell();
+        cc.innerHTML = `<button class="order-button complete-button" onclick="handleComplete('${o.timestamp}', '${o.item}')">ส่ง</button>`;
     });
     updateWaitingTimes();
 }
 
+function handleComplete(ts, item) {
+    const idx = orders.findIndex(x => x.timestamp === ts && x.item === item);
+    if (idx === -1) return;
+    const o = orders[idx];
+    completedOrders.push({ ...o, completedAt: new Date().toISOString() });
+    if (totalOrders[o.item]) { totalOrders[o.item] -= o.quantity; if (totalOrders[o.item] <= 0) delete totalOrders[o.item]; }
+    orders.splice(idx, 1);
+    db.ref().update({ orders, completedOrders, totalOrders });
+}
+
+function undoLastComplete() {
+    if (!completedOrders.length) return;
+    const last = completedOrders.pop();
+    orders.push(last);
+    totalOrders[last.item] = (totalOrders[last.item] || 0) + last.quantity;
+    db.ref().update({ orders, completedOrders, totalOrders });
+}
 
 function updateWaitingTimes() {
     const rows = document.querySelectorAll('#tableOrdersTable tbody tr');
-    const sortedOrders = [...orders].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    rows.forEach((row,index)=>{
-        if(index<sortedOrders.length){
-            const order=sortedOrders[index];
-            const waitingTimeCell=row.querySelector('.waiting-time-cell');
-            if(!waitingTimeCell)return;
-            const waitingMinutes=Math.floor((new Date()-new Date(order.timestamp))/6e4);
-            waitingTimeCell.textContent=waitingMinutes+' นาที';
-            row.className='wait-normal';
-            if(waitingMinutes>=10)row.className='wait-long';
-            else if(waitingMinutes>=5)row.className='wait-medium';
+    const sorted = [...orders].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    rows.forEach((row, i) => {
+        if (sorted[i]) {
+            const mins = Math.floor((new Date() - new Date(sorted[i].timestamp)) / 60000);
+            const wc = row.querySelector('.waiting-time-cell');
+            if (wc) wc.textContent = mins + ' นาที';
+            row.className = mins >= 10 ? 'wait-long' : (mins >= 5 ? 'wait-medium' : 'wait-normal');
         }
     });
 }
 
-function showTotalOrders(){let t=document.getElementById('totalOrders');if(!t)t=createTotalOrdersElement();t.innerHTML='<h2>เมนูซ้ำ</h2>';const n=[],b={};const s=[...orders].sort((x,y)=>new Date(x.timestamp)-new Date(y.timestamp));for(const o of s){if(o.quantity<=0)continue;const N=o.item;const c=(o.comment||'').trim();if(nonBatchableMenuItems.includes(N)){n.push({...o,item:N,comment:c});}else{const k=`${N}-${c}`;if(!b[k])b[k]={item:N,comment:c,regular:0,takeHome:0,timestamps:[]};if(o.timestamp)b[k].timestamps.push(o.timestamp);hasThaiCharacters(o.table)?b[k].takeHome+=o.quantity:b[k].regular+=o.quantity;}}const a=[];n.forEach(o=>a.push({type:'nonBatchable',...o}));for(const k in b){const g=b[k];const S=g.timestamps.length>0?g.timestamps.sort((x,y)=>new Date(x)-new Date(y))[0]:new Date().toISOString();a.push({type:'batchable',...g,timestamp:S});}a.sort((x,y)=>new Date(x.timestamp).getTime()-new Date(y.timestamp).getTime());for(const i of a){const C=i.comment?` (${i.comment})`:'';let d='';if(i.type==='nonBatchable'){d=hasThaiCharacters(i.table)?`${i.quantity},${i.item}${C} 0, ก ${i.quantity}`:`${i.quantity},${i.item}${C} ${i.quantity}`;}else{const T=i.regular+i.takeHome;if(i.takeHome>0&&i.regular>0)d=`${T},${i.item}${C} ${i.regular}, ก ${i.takeHome}`;else if(i.takeHome>0)d=`${T},${i.item}${C} 0, ก ${i.takeHome}`;else d=`${T},${i.item}${C} ${i.regular}`;}t.innerHTML+=`<p>${d}</p>`;}setTimeout(updateKitchenDisplay,100);}
-function hasThaiCharacters(s){if(typeof s!=='string')s=String(s);return /[ก-๙]/.test(s);}
-function updateKitchenDisplay(){['kik','jeab','nan','see'].forEach(c=>{const e=document.getElementById(`chef-${c}`);if(e)e.innerHTML='';});const t=document.getElementById('totalOrders');if(!t)return;t.querySelectorAll('p').forEach(p=>{const T=p.textContent.trim();if(!T)return;for(const[c,i]of Object.entries(chefMenus)){if(i.some(k=>T.includes(k))){const C=document.getElementById(`chef-${c}`);if(C){const I=document.createElement('div');I.className='chef-summary';I.textContent=T;C.appendChild(I);}break;}}});}
-function observeTotalOrders(){const e=document.getElementById('totalOrders');if(!e)return;new MutationObserver(()=>updateKitchenDisplay()).observe(e,{childList:true,subtree:true,characterData:true});updateKitchenDisplay();}
-function createTotalOrdersElement(){const e=document.createElement('div');e.id='totalOrders';const c=document.getElementById('completedOrders');if(c)c.parentNode.insertBefore(e,c);else document.body.appendChild(e);return e;}
-function showCompletedOrders(){let e=document.getElementById('completedOrders');if(!e){e=document.createElement('div');e.id='completedOrders';const b=document.querySelector('button[onclick="clearCompletedOrders()"]');if(b)b.parentNode.insertBefore(e,b);else document.body.appendChild(e);}e.innerHTML='<h2>เสร็จแล้ว</h2>';if(Array.isArray(completedOrders)&&completedOrders.length>0){[...completedOrders].sort((x,y)=>new Date(y.timestamp)-new Date(x.timestamp)).forEach(o=>{const c=(o.comment&&String(o.comment).trim()!=='')?` (${String(o.comment).trim()})`:'';e.innerHTML+=`<p>โต๊ะ ${o.table}: ${o.item}${c}</p>`;});}}
-document.addEventListener('gesturestart',(e)=>e.preventDefault());
-  </script>
+function showTotalOrders() {
+    const t = document.getElementById('totalOrders'); if (!t) return;
+    t.innerHTML = '<h2>เมนูซ้ำ</h2>';
+    const b = {};
+    orders.forEach(o => {
+        const k = nonBatchableMenuItems.includes(o.item) ? `${o.item}-${o.timestamp}` : `${o.item}-${o.comment}`;
+        if (!b[k]) b[k] = { item: o.item, comment: o.comment, reg: 0, th: 0, ts: o.timestamp };
+        /[ก-๙]/.test(o.table) ? b[k].th += o.quantity : b[k].reg += o.quantity;
+    });
+    Object.values(b).sort((x, y) => new Date(x.ts) - new Date(y.ts)).forEach(i => {
+        const C = i.comment ? ` (${i.comment})` : '';
+        let d = (i.th > 0 && i.reg > 0) ? `${i.th + i.reg},${i.item}${C} ${i.reg}, ก ${i.th}` :
+                (i.th > 0 ? `${i.th},${i.item}${C} 0, ก ${i.th}` : `${i.reg},${i.item}${C} ${i.reg}`);
+        const p = document.createElement('p'); p.textContent = d; t.appendChild(p);
+    });
+    updateKitchenDisplay();
+}
+
+function updateKitchenDisplay() {
+    ['kik', 'jeab', 'nan', 'see'].forEach(c => { const e = document.getElementById(`chef-${c}`); if (e) e.innerHTML = ''; });
+    document.querySelectorAll('#totalOrders p').forEach(p => {
+        for (const [c, menus] of Object.entries(chefMenus)) {
+            if (menus.some(m => p.textContent.includes(m))) {
+                const ce = document.getElementById(`chef-${c}`);
+                if (ce) ce.innerHTML += `<div class="chef-summary">${p.textContent}</div>`;
+                break;
+            }
+        }
+    });
+}
+
+function showCompletedOrders() {
+    const e = document.getElementById('completedOrders'); if (!e) return;
+    e.innerHTML = '<h2>เสร็จแล้ว</h2>';
+    [...completedOrders].reverse().slice(0, 15).forEach(o => {
+        e.innerHTML += `<p>โต๊ะ ${o.table}: ${o.item} ${o.comment ? '('+o.comment+')' : ''}</p>`;
+    });
+}
+
+// 6. Sync & Connectivity
+function updateSyncStatus() {
+    const ind = document.getElementById('syncIndicator');
+    const txt = document.getElementById('syncStatusText');
+    const connected = navigator.onLine; // ตรวจเน็ตเครื่อง
+    
+    if (!connected) {
+        if (ind) ind.className = 'status-indicator offline';
+        if (txt) txt.textContent = 'ออฟไลน์ (กำลังใช้ข้อมูลในเครื่อง)';
+    } else {
+        if (ind) ind.className = 'status-indicator synced';
+        if (txt) txt.textContent = 'ซิงค์แล้ว';
+    }
+}
+
+async function syncWithFirebase() {
+    if (isSyncing || !navigator.onLine) {
+        updateSyncStatus();
+        return;
+    }
+    isSyncing = true;
+    try {
+        const localTemp = loadFromLocalStorage(LS_KEYS.TEMP);
+        if (localTemp) await db.ref('tempData').set(localTemp);
+        updateSyncStatus();
+    } catch (e) {
+        updateSyncStatus();
+    } finally { isSyncing = false; }
+}
+
+function toggleStockMode() {
+    isStockMode = !isStockMode;
+    const btn = document.getElementById('stockModeBtn');
+    btn.textContent = isStockMode ? "จัดการของหมด (เปิด)" : "จัดการของหมด (ปิด)";
+    btn.className = isStockMode ? "order-button stock-button stock-mode-active" : "order-button stock-button";
+}
+
+function updateSoldOutVisuals() {
+    document.querySelectorAll('button[onclick^="placeOrder"]').forEach(btn => {
+        const m = btn.getAttribute('onclick').match(/'(.+?)'/)[1];
+        btn.classList.toggle('sold-out', !!soldOutMap[m]);
+    });
+}
+
+function clearCompletedOrders() { if(confirm('ล้างรายการที่เสร็จแล้ว?')) { completedOrders = []; db.ref('completedOrders').set([]); showCompletedOrders(); } }
+
+function changeTableName(){
+    const o=document.getElementById('oldTableName').value.trim(), n=document.getElementById('newTableName').value.trim();
+    if(o&&n){
+        orders=orders.map(d=>d.table===o?{...d,table:n}:d);
+        db.ref('orders').set(orders);
+        document.getElementById('oldTableName').value=''; document.getElementById('newTableName').value='';
+    }
+}
+
+// 7. Initial & Listeners
+window.addEventListener('load', () => {
+    // Load local first
+    orders = loadFromLocalStorage(LS_KEYS.ORDERS) || [];
+    completedOrders = loadFromLocalStorage(LS_KEYS.COMPLETED) || [];
+    totalOrders = loadFromLocalStorage(LS_KEYS.TOTAL) || {};
+    const tData = loadFromLocalStorage(LS_KEYS.TEMP);
+    if(tData) { orderCounts = tData.orderCounts; menuComments = tData.comments; }
+
+    showTableOrders(); showTotalOrders(); showCompletedOrders(); showSelectedItems();
+
+    // Online Status
+    window.addEventListener('online', updateSyncStatus);
+    window.addEventListener('offline', updateSyncStatus);
+    updateSyncStatus();
+
+    // Firebase Listeners
+    db.ref('orders').on('value', snap => { orders = snap.val() || []; saveToLocalStorage(LS_KEYS.ORDERS, orders); showTableOrders(); showTotalOrders(); });
+    db.ref('completedOrders').on('value', snap => { completedOrders = snap.val() || []; saveToLocalStorage(LS_KEYS.COMPLETED, completedOrders); showCompletedOrders(); });
+    db.ref('totalOrders').on('value', snap => { totalOrders = snap.val() || {}; saveToLocalStorage(LS_KEYS.TOTAL, totalOrders); showTotalOrders(); });
+    db.ref('soldOutItems').on('value', snap => { soldOutMap = snap.val() || {}; updateSoldOutVisuals(); });
+    
+    // ดึงค่า tempData แต่ระวังไม่ให้เขียนทับคอมเมนต์ที่กำลังพิมพ์
+    db.ref('tempData').on('value', snap => {
+        const d = snap.val();
+        if (d && !isSyncing) {
+            // ถ้าเครื่องอื่นเปลี่ยนรายการ ให้เครื่องเราเปลี่ยนตามเฉพาะจำนวน
+            // แต่คอมเมนต์จะไม่ถูกทับถ้าเราคุยกับตารางอยู่
+            orderCounts = d.orderCounts || orderCounts;
+            // เช็คว่าช่อง input ไหนกำลังถูกโฟกัสอยู่หรือไม่
+            const activeInput = document.activeElement;
+            if (!activeInput || !activeInput.classList.contains('comment-input-selected')) {
+                menuComments = d.comments || menuComments;
+                showSelectedItems();
+            }
+            for(let i in orderCounts) {
+                const el = document.getElementById('quantity' + i);
+                if(el) el.innerText = orderCounts[i];
+            }
+        }
+    });
+
+    setInterval(syncWithFirebase, 2000);
+    setInterval(updateWaitingTimes, 30000);
+    new MutationObserver(()=>updateKitchenDisplay()).observe(document.getElementById('totalOrders'),{childList:true,subtree:true});
+});
+
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
 
 </body>
 </html>
