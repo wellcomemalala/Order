@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>คากิ</title>
+  <title>นักซิ่ง</title>
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -17,15 +17,101 @@
   body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
-    font-size: 24px; /* Adjusted base font size */
+    font-size: 24px;
     text-align: center;
+    padding: 10px;
   }
 
   h1, h2 {
     color: #333;
-    font-size: 32px; /* Adjusted heading font size */
+    font-size: 32px;
   }
 
+  /* ========== สไตล์ส่วนเลือกหมวดหมู่ ========== */
+  #categorySection {
+    margin: 20px 0;
+  }
+
+  #categoryButtons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .category-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    padding: 20px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+  }
+
+  .category-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  }
+
+  .category-button:active {
+    transform: translateY(0);
+  }
+
+  .category-button.active {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.3);
+  }
+
+  /* ปุ่มกลับ */
+  #backToCategoryBtn {
+    background-color: #95a5a6;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 15px;
+    display: none;
+    touch-action: manipulation;
+  }
+
+  #backToCategoryBtn:hover {
+    background-color: #7f8c8d;
+  }
+
+  /* ========== สไตล์ส่วนรายการอาหาร ========== */
+  #menuSection {
+    display: none;
+    margin: 20px 0;
+  }
+
+  .menu-category-title {
+    font-size: 28px;
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: bold;
+  }
+
+  #menuButtons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ========== สไตล์เดิมที่ยังใช้งาน ========== */
   #tableButtons {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -33,13 +119,13 @@
     margin-bottom: 20px;
   }
 
-  textarea, .comment-input-queue { /* Added .comment-input-queue */
+  textarea, .comment-input-queue {
     width: 100%;
-    padding: 8px; /* Adjusted padding */
+    padding: 8px;
     border-radius: 5px;
     border: 1px solid #ccc;
     margin-bottom: 10px;
-    font-size: 18px; /* Adjusted font size */
+    font-size: 18px;
     box-sizing: border-box;
   }
 
@@ -49,14 +135,14 @@
 
   #tableOrders p, #completedOrders p, #totalOrders p {
     margin-bottom: 5px;
-    font-size: 18px; /* Consistent font size for paragraphs */
+    font-size: 18px;
   }
 
-  .order-button, .table-button, .save-comment-button { /* Added .save-comment-button */
-    background-color: #4CAF50; /* Default Green for order buttons */
+  .order-button, .table-button, .save-comment-button {
+    background-color: #4CAF50;
     border: none;
     color: white;
-    padding: 12px 20px; /* Adjusted padding */
+    padding: 12px 20px;
     text-align: center;
     text-decoration: none;
     display: inline-block;
@@ -70,22 +156,20 @@
   }
 
   .table-button {
-    background-color: #008CBA; /* Blue for table buttons */
+    background-color: #008CBA;
   }
 
   .move-button {
     background-color: #f39c12;
   }
   
-  /* เพิ่มสไตล์ปุ่มโต๊ะจองให้เด่นชัด */
   .reservation-button {
-    background-color: #e74c3c; /* สีแดงเข้ม */
+    background-color: #e74c3c;
     color: white;
     font-weight: bold;
     border: 2px solid #c0392b;
   }
 
-  /* สไตล์ปุ่มจัดการของหมด */
   .stock-button {
     background-color: #555;
     color: white;
@@ -93,25 +177,23 @@
   }
   
   .stock-mode-active {
-    background-color: #ff9800; /* สีส้ม */
+    background-color: #ff9800;
     color: black;
     border-color: #e65100;
     font-weight: bold;
     animation: pulse 1.5s infinite;
   }
   
-  /* สไตล์สำหรับปุ่มที่ของหมด */
   .sold-out {
-    background-color: #7f8c8d !important; /* สีเทา */
+    background-color: #7f8c8d !important;
     opacity: 0.6;
     text-decoration: line-through;
     color: #bdc3c7 !important;
     position: relative;
   }
   
-  /* สไตล์ปุ่มเรียกคืน */
   .undo-button {
-    background-color: #f1c40f; /* สีเหลือง */
+    background-color: #f1c40f;
     color: black;
     font-weight: bold;
   }
@@ -123,20 +205,21 @@
   }
 
   .complete-button {
-    background-color: #8e44ad; /* Purple for complete */
+    background-color: #8e44ad;
   }
+
   .save-comment-button {
-    background-color: #5bc0de; /* Info blue - Default for save comment */
+    background-color: #5bc0de;
     padding: 8px 12px;
     font-size: 14px;
     width: auto;
     display: block;
     margin-top: 5px;
   }
-  .save-comment-button.saved { /* New class for saved state */
-    background-color: #4CAF50; /* Green when saved */
-  }
 
+  .save-comment-button.saved {
+    background-color: #4CAF50;
+  }
 
   table {
     border-collapse: collapse;
@@ -150,10 +233,10 @@
     padding: 10px;
     vertical-align: middle;
   }
+
   #tableOrdersTable th, #tableOrdersTable td {
       text-align: center;
   }
-
 
   th {
     background-color: #f2f2f2;
@@ -163,31 +246,32 @@
   .wait-medium { background-color: #fff3cd; }
   .wait-long { background-color: #f8d7da; }
 
-
   @keyframes flashRed {
     0% { background-color: red; }
     50% { background-color: white; }
     100% { background-color: red; }
   }
   .flash-red { animation: flashRed 0.13s ease-out; }
-  /* Add flash green for save comment button */
+
   @keyframes flashGreen {
-    0% { background-color: #28a745; } /* Darker green */
+    0% { background-color: #28a745; }
     50% { background-color: white; }
     100% { background-color: #28a745; }
   }
   .flash-green { animation: flashGreen 0.2s ease-out; }
 
-
   @media (max-width: 767px) {
-    body { font-size: 14px; }
+    body { font-size: 14px; padding: 5px; }
     h1, h2 { font-size: 22px; }
+    .category-button { font-size: 16px; padding: 15px 10px; }
+    .menu-category-title { font-size: 22px; }
     .order-button, .table-button, .save-comment-button { padding: 8px 12px; font-size: 14px; }
     textarea, .comment-input-queue { font-size: 16px; }
     #tableOrders p, #completedOrders p, #totalOrders p { font-size: 16px; }
     table th, table td { padding: 6px; font-size: 12px; }
     .comment-input-queue { padding: 6px; font-size: 12px; }
     .save-comment-button { padding: 6px 10px; font-size: 12px; }
+    #backToCategoryBtn { padding: 10px 18px; font-size: 16px; }
   }
 
   #oldTableName, #newTableName { font-size: 20px; padding: 8px; margin: 8px; width: 180px; }
@@ -200,539 +284,212 @@
   .connected { background-color: #4CAF50; color: white; }
   .disconnected { background-color: #f44336; color: white; }
   
-  /* สไตล์สำหรับกล่องปุ่มด้านล่างแบบ ซ้าย-ขวา */
   .bottom-action-container {
       display: grid;
-      grid-template-columns: 1fr 1fr; /* แบ่งครึ่งเท่ากัน 50-50 */
-      gap: 30px; /* เว้นระยะห่างตรงกลางให้เยอะหน่อย กันกดผิด */
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
       margin-top: 30px;
       padding: 10px;
   }
 
   .clear-button {
-      background-color: #e74c3c; /* สีแดง สำหรับปุ่มล้าง */
+      background-color: #e74c3c;
   }
-  
-  
 
-#syncStatusBar {
+  #syncStatusBar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 30px;
+    background: linear-gradient(to right, #4CAF50, #45a049);
     color: white;
-    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    z-index: 1001;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+
+  .status-indicator.synced { background-color: #90EE90; }
+  .status-indicator.syncing { background-color: #FFD700; animation: blink 1s infinite; }
+  .status-indicator.offline { background-color: #FF6B6B; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  #selectedItemsDisplay {
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .quantity-display {
+    background-color: #e8f5e9;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    z-index: 9999;
+  }
+
+  .comment-input-selected {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 5px;
     font-size: 14px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-}
-
-#syncStatusBar .status-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#syncStatusBar .status-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-}
-
-#syncStatusBar .status-indicator.synced {
-    background-color: #4CAF50;
-}
-
-#syncStatusBar .status-indicator.syncing {
-    background-color: #FFC107;
-}
-
-#syncStatusBar .status-indicator.offline {
-    background-color: #F44336;
-}
-
-#syncStatusBar .status-text {
-    font-weight: 500;
-}
-
-#syncStatusBar .status-right {
-    display: flex;
-    gap: 15px;
-    font-size: 12px;
-    opacity: 0.9;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.1); }
-}
-
-/* เลื่อน body ลงเพื่อไม่ให้ซ้อนกับ sync bar */
-body {
-    padding-top: 45px;
-}
-
+  }
   
+  
+  /* สีน้ำเงิน สำหรับกลุ่มแกงป่า */
+  .category-blue {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+    color: white !important;
+  }
+
+  /* สีเหลือง สำหรับกลุ่มแกงหน่อไม้ดอง */
+  .category-yellow {
+    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%) !important;
+    color: #333 !important; /* ใช้ตัวหนังสือสีเข้มเพื่อให้มองเห็นชัดบนพื้นเหลือง */
+  }
 </style>
 </head>
 <body>
-<!-- แสดงสถานะการเชื่อมต่อ -->
-<div id="connectionStatus" class="connected">เชื่อมต่อแล้ว</div>
 
-<h1>รับออเดอร์</h1>
+<!-- Sync Status Bar -->
+<div id="syncStatusBar">
+  <span class="status-indicator synced" id="syncIndicator"></span>
+  <span id="syncStatusText">ซิงค์แล้ว</span>
+</div>
+
 
 <!-- ปุ่มจัดการของหมด -->
-<div style="margin-bottom: 15px;">
-    <button id="stockModeBtn" class="order-button stock-button" onclick="toggleStockMode()" style="width: auto; padding: 10px 20px;">จัดการของหมด (ปิด)</button>
-</div>
-
-<table>
-
-    <tbody>
-        <tr>
-            <td rowspan="2">ของทอด</td>
-			
-
-            <td><button class="order-button" onclick="placeOrder('ปลาเนื้ออ่อน')">ปลาเนื้ออ่อน<span id="quantityปลาเนื้ออ่อน">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ปลานิลแดดเดียว')">ปลานิลแดดเดียว<span id="quantityปลานิลแดดเดียว">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('หมูทอดสมุนไพร')">หมูทอดสมุนไพร<span id="quantityหมูทอดสมุนไพร">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('สะเดาน้ำปลาหวาน')">สะเดาน้ำปลาหวาน<span id="quantityสะเดาน้ำปลาหวาน">0</span></button></td>
-        </tr>
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">คั่ว</td>
-            <td><button class="order-button" onclick="placeOrder('คั่วไก่')">คั่วไก่<span id="quantityคั่วไก่">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('คั่วกบ')">คั่วกบ<span id="quantityคั่วกบ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('คั่วเนื้อ')">คั่วเนื้อ<span id="quantityคั่วเนื้อ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('คั่วหมู')">คั่วหมู<span id="quantityคั่วหมู">0</span></button></td>
-        </tr>
-        <tr>
-            <td><button class="order-button" onclick="placeOrder('คั่วปลาไหล')">คั่วปลาไหล<span id="quantityคั่วปลาไหล">0</span></button></td>
-			 <td><button class="order-button" onclick="placeOrder('คั่วเครื่องใน')">คั่วเครื่องใน<span id="quantityคั่วเครื่องใน">0</span></button></td>
-            <td colspan="3"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">ต้มแซ่บ</td>
-            <td><button class="order-button" onclick="placeOrder('ต้มแซ่บไก่')">ต้มแซ่บไก่<span id="quantityต้มแซ่บไก่">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ต้มแซ่บเนื้อ')">ต้มแซ่บเนื้อ<span id="quantityต้มแซ่บเนื้อ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ต้มแซ่บหมู')">ต้มแซ่บหมู<span id="quantityต้มแซ่บหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ต้มแซ่บกระดูกอ่อน')">ต้มแซ่บกระดูกอ่อน<span id="quantityต้มแซ่บกระดูกอ่อน">0</span></button></td>
-        </tr>
-
-
-		  <tr>
-            <td><button class="order-button" onclick="placeOrder('ต้มแซ่บเครื่องใน')">ต้มแซ่บเครื่องใน<span id="quantityต้มแซ่บเครื่องใน">0</span></button></td>
-
-            <td colspan="3"></td>
-        </tr>
-
-
-
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">ปลาช่อน</td>
-            <td><button class="order-button" onclick="placeOrder('ปลาช่อนแป๊ะซะ')">ปลาช่อนแป๊ะซะ<span id="quantityปลาช่อนแป๊ะซะ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ปลาช่อนแวะถัวะ')">ปลาช่อนแวะถัวะ<span id="quantityปลาช่อนแวะถัวะ">0</span></button></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-
-
-		<tr>
-            <td rowspan="2">ปลานึ่ง</td>
-            <td><button class="order-button" onclick="placeOrder('ปลาช่อน นึ่ง')">ปลาช่อน นึ่ง<span id="quantityปลาช่อน นึ่ง">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ปลานิล นึ่ง')">ปลานิล นึ่ง<span id="quantityปลานิล นึ่ง">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ปลาทับทิม นึ่ง')">ปลาทับทิม นึ่ง<span id="quantityปลาทับทิม นึ่ง">0</span></button></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-
-
-        <tr>
-            <td rowspan="2">ผัดเผ็ด</td>
-            <td><button class="order-button" onclick="placeOrder('ผัดเผ็ดหมูป่า')">ผัดเผ็ดหมูป่า<span id="quantityผัดเผ็ดหมูป่า">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ผัดเผ็ดกระดูกหมู')">ผัดเผ็ดกระดูกหมู<span id="quantityผัดเผ็ดกระดูกหมู">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ผัดเผ็ดเครื่องใน')">ผัดเผ็ดเครื่องใน<span id="quantityผัดเผ็ดเครื่องใน">0</span></button></td>
-
-            <td colspan="2"></td>
-        </tr>
-
-				  <tr>
-			<td><button class="order-button" onclick="placeOrder('ผัดเผ็ดนกหน่อไม้')">ผัดเผ็ดนกหน่อไม้<span id="quantityผัดเผ็ดนกหน่อไม้">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ผัดเผ็ดนกใบยี่หร่า')">ผัดเผ็ดนกใบยี่หร่า<span id="quantityผัดเผ็ดนกใบยี่หร่า">0</span></button></td>
-
-            <td colspan="3"></td>
-        </tr>
-
-
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">ลาบ</td>
-            <td><button class="order-button" onclick="placeOrder('ลาบเป็ด')">ลาบเป็ด<span id="quantityลาบเป็ด">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ลาบปลา')">ลาบปลา<span id="quantityลาบปลา">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ลาบปู')">ลาบปู<span id="quantityลาบปู">0</span></button></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">อ่อม</td>
-            <td><button class="order-button" onclick="placeOrder('อ่อมไก่')">อ่อมไก่<span id="quantityอ่อมไก่">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('อ่อมกบ')">อ่อมกบ<span id="quantityอ่อมกบ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('อ่อมหมู')">อ่อมหมู<span id="quantityอ่อมหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('อ่อมเนื้อ')">อ่อมเนื้อ<span id="quantityอ่อมเนื้อ">0</span></button></td>
-        </tr>
-        <tr>
-            <td><button class="order-button" onclick="placeOrder('อ่อมหอย')">อ่อมหอย<span id="quantityอ่อมหอย">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('อ่อมเครื่องใน')">อ่อมเครื่องใน<span id="quantityอ่อมเครื่องใน">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('อ่อมนก')">อ่อมนก<span id="quantityอ่อมนก">0</span></button></td>
-            <td colspan="3"></td>
-        </tr>
-        <tr>
-            <td rowspan="2"style="background-color:#ffeaa7;">แกงป่าผัก</td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าผักไก่')">แกงป่าผักไก่<span id="quantityแกงป่าผักไก่">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าผักหมู')">แกงป่าผักหมู<span id="quantityแกงป่าผักหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าผักเนื้อ')">แกงป่าผักเนื้อ<span id="quantityแกงป่าผักเนื้อ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าผักปลา')">แกงป่าผักปลา<span id="quantityแกงป่าผักปลา">0</span></button></td>
-        </tr>
-
-
-
-		  <tr>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าผักเครื่องใน')">แกงป่าผักเครื่องใน<span id="quantityแกงป่าผักเครื่องใน">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงป่าผักนก')">แกงป่าผักนก<span id="quantityแกงป่าผักนก">0</span></button></td>
-
-            <td colspan="3"></td>
-        </tr>
-
-
-
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2"style="background-color:#ffeaa7;">แกงป่าหน่อไม้ดอง</td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้ดองไก่')">แกงป่าหน่อไม้ดองไก่<span id="quantityแกงป่าหน่อไม้ดองไก่">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้ดองหมู')">แกงป่าหน่อไม้ดองหมู<span id="quantityแกงป่าหน่อไม้ดองหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้ดองเนื้อ')">แกงป่าหน่อไม้ดองเนื้อ<span id="quantityแกงป่าหน่อไม้ดองเนื้อ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แสงโสม')">แสงโสม<span id="quantityแสงโสม">0</span></button></td>
-        </tr>
-
-
-
-			  <tr>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้ดองเครื่องใน')">แกงป่าหน่อไม้ดองเครื่องใน<span id="quantityแกงป่าหน่อไม้ดองเครื่องใน">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้ดองนก')">แกงป่าหน่อไม้ดองนก<span id="quantityแกงป่าหน่อไม้ดองนก">0</span></button></td>
-
-            <td colspan="3"></td>
-        </tr>
-
-
-
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2"style="background-color:#ffeaa7;">แกงป่าหน่อไม้สด</td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้สดไก่')">แกงป่าหน่อไม้สดไก่<span id="quantityแกงป่าหน่อไม้สดไก่">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้สดหมู')">แกงป่าหน่อไม้สดหมู<span id="quantityแกงป่าหน่อไม้สดหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้สดเนื้อ')">แกงป่าหน่อไม้สดเนื้อ<span id="quantityแกงป่าหน่อไม้สดเนื้อ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้สดปลา')">แกงป่าหน่อไม้สดปลา<span id="quantityแกงป่าหน่อไม้สดปลา">0</span></button></td>
-        </tr>
-
-
-
-			  <tr>
-            <td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้สดเครื่องใน')">แกงป่าหน่อไม้สดเครื่องใน<span id="quantityแกงป่าหน่อไม้สดเครื่องใน">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงป่าหน่อไม้สดนก')">แกงป่าหน่อไม้สดนก<span id="quantityแกงป่าหน่อไม้สดนก">0</span></button></td>
-
-            <td colspan="3"></td>
-        </tr>
-
-
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">ไข่เจียว</td>
-            <td><button class="order-button" onclick="placeOrder('ไข่เจียวบาว')">ไข่เจียวบาว<span id="quantityไข่เจียวบาว">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ไข่เจียวหมูสับ')">ไข่เจียวหมูสับ<span id="quantityไข่เจียวหมูสับ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ไข่เจียวธรรมดา')">ไข่เจียวธรรมดา<span id="quantityไข่เจียวธรรมดา">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ไข่เจียวไข่มดแดง')">ไข่เจียวไข่มดแดง<span id="quantityไข่เจียวไข่มดแดง">0</span></button></td>
-        </tr>
-        <tr>
-            <td colspan="4"></td>
-        </tr>
-        <tr>
-            <td rowspan="2">แกง</td>
-            <td><button class="order-button" onclick="placeOrder('แกงบอน')">แกงบอน<span id="quantityแกงบอน">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('มะรุม')">มะรุม<span id="quantityมะรุม">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('กระบุก')">กระบุก<span id="quantityกระบุก">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงหอย')">แกงหอย<span id="quantityแกงหอย">0</span></button></td>
-
-
-        </tr>
-
-		<td></td>
-
-		<tr>
-            <td rowspan="2">แกงหน่อไม้ดอง</td>
-			</tr>
-
-
-        <tr>
-            <td><button class="order-button" onclick="placeOrder('แกงไก่หน่อ')">แกงไก่หน่อ<span id="quantityแกงไก่หน่อ">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงหมูหน่อ')">แกงหมูหน่อ<span id="quantityแกงหมูหน่อ">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงเนื้อหน่อ')">แกงเนื้อหน่อ<span id="quantityแกงเนื้อหน่อ">0</span></button></td>
-
-        </tr>
-
-
-
-		<tr>
-            <td rowspan="2">แกงปลาหน่อไม้ดอง</td>
-			</tr>
-
-
-		<tr>
-            <td><button class="order-button" onclick="placeOrder('แกงปลากดหน่อ')">แกงปลากดหน่อ<span id="quantityแกงปลากดหน่อ">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงปลาหลดหน่อ')">แกงปลาหลดหน่อ<span id="quantityแกงปลาหลดหน่อ">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงปลานิลหน่อ')">แกงปลานิลหน่อ<span id="quantityแกงปลานิลหน่อ">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('แกงปลาเนื้ออ่อนหน่อ')">แกงปลาเนื้ออ่อนหน่อ<span id="quantityแกงปลาเนื้ออ่อนหน่อ">0</span></button></td>
-        </tr>
-
-
-
-		<td></td>
-
-
-		<tr>
-            <td rowspan="2">ผักหวาน</td>
-            <td><button class="order-button" onclick="placeOrder('ผักหวาน')">ผักหวาน<span id="quantityผักหวาน">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ผักหวานไข่มดแดง')">ผักหวานไข่มดแดง<span id="quantityผักหวานไข่มดแดง">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ผักหวานเห็ดเผาะ')">ผักหวานเห็ดเผาะ<span id="quantityผักหวานเห็ดเผาะ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ผักหวานไข่มดแดงใส่เห็ดเผาะ')">ผักหวานไข่มดแดงใส่เห็ดเผาะ<span id="quantityผักหวานไข่มดแดงใส่เห็ดเผาะ">0</span></button></td>
-        </tr>
-        <tr>
-
-            <td></td>
-        </tr>
-
-
-        <tr>
-            <td rowspan="3">อื่นๆ</td>
-            <td><button class="order-button" onclick="placeOrder('ขาหมู')">ขาหมู<span id="quantityขาหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ผัดฉ่าขาหมู')">ผัดฉ่าขาหมู<span id="quantityผัดฉ่าขาหมู">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('หมูปลาร้า')">หมูปลาร้า<span id="quantityหมูปลาร้า">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('หมูน้ำปลา')">หมูน้ำปลา<span id="quantityหมูน้ำปลา">0</span></button></td>
-        </tr>
-        <tr>
-			<td><button class="order-button" onclick="placeOrder('ไก่ปลาร้า')">ไก่ปลาร้า<span id="quantityไก่ปลาร้า">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ไก่น้ำปลา')">ไก่น้ำปลา<span id="quantityไก่น้ำปลา">0</span></button></td>
-
-            <td><button class="order-button" onclick="placeOrder('ข้าว')">ข้าว<span id="quantityข้าว">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ขนม')">ขนม<span id="quantityขนม">0</span></button></td>
-			</tr>
-
-        <tr>
-			<td><button class="order-button" onclick="placeOrder('หงษ์ทอง')">หงษ์ทอง<span id="quantityหงษ์ทอง">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('สามชั้นใบยี่หร่า')">สามชั้นใบยี่หร่า<span id="quantityสามชั้นใบยี่หร่า">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('เมนูพิเศษ')">เมนูพิเศษ<span id="quantityเมนูพิเศษ">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ของแถม')">ของแถม<span id="quantityของแถม">0</span></button></td>
-        </tr>
-		
-		<tr>
-            <td rowspan="3">เมนูพิเศษ</td>
-            <td><button class="order-button" onclick="placeOrder('หมกหม้อ')">หมกหม้อ<span id="quantityหมกหม้อ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ขี้เหล็ก')">ขี้เหล็ก<span id="quantityขี้เหล็ก">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ต้มจืด')">ต้มจืด<span id="quantityต้มจืด">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ทอดมัน')">ทอดมัน<span id="quantityทอดมัน">0</span></button></td>
-            
-        </tr>
-		
-		        <tr>
-			<td><button class="order-button" onclick="placeOrder('หมกปลานิล')">หมกปลานิล<span id="quantityหมกปลานิล">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ไก่หลงทาง')">ไก่หลงทาง<span id="quantityไก่หลงทาง">0</span></button></td>
-			
-        </tr>
-		
-		 <td></td>
-		
-		<tr>
-            <td rowspan="4">ส้มตำ</td>
-            <td><button class="order-button" onclick="placeOrder('ตำลาว')">ตำลาว<span id="quantityตำลาว">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำปูปลาล้าปูนิ่ง')">ตำปูปลาล้าปูนิ่ง<span id="quantityตำปูปลาล้าปูนิ่ง">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำปูปลาล้าปูดอง')">ตำปูปลาล้าปูดอง<span id="quantityตำปูปลาล้าปูดอง">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ตำแตง')">ตำแตง<span id="quantityตำแตง">0</span></button></td>
-            
-        </tr>
-		
-		        <tr>
-			<td><button class="order-button" onclick="placeOrder('ตำถั่ว')">ตำถั่ว<span id="quantityตำถั่ว">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำไทย')">ตำไทย<span id="quantityตำไทย">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำโคราช')">ตำโคราช<span id="quantityตำโคราช">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ตำซั่ว')">ตำซั่ว<span id="quantityตำซั่ว">0</span></button></td>
-			
-        </tr>
-		
-		
-		<tr>
-			<td><button class="order-button" onclick="placeOrder('ตำป่า')">ตำป่า<span id="quantityตำป่า">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำหมูยอ')">ตำหมูยอ<span id="quantityตำหมูยอ">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำมาม่า')">ตำมาม่า<span id="quantityตำมาม่า">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ตำไทยไข่เค็ม')">ตำไทยไข่เค็ม<span id="quantityตำไทยไข่เค็ม">0</span></button></td>
-			
-        </tr>
-		
-		
-		 
-			<tr>
-			<td><button class="order-button" onclick="placeOrder('ตำโพดไข่เค็ม')">ตำโพดไข่เค็ม<span id="quantityตำโพดไข่เค็ม">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำกุ้งสด')">ตำกุ้งสด<span id="quantityตำกุ้งสด">0</span></button></td>
-            <td><button class="order-button" onclick="placeOrder('ตำกุ้งสุกกกก')">ตำกุ้งสุกกกก<span id="quantityตำกุ้งสุกกกก">0</span></button></td>
-			<td><button class="order-button" onclick="placeOrder('ตำทะเล')">ตำทะเล<span id="quantityตำทะเล">0</span></button></td>
-			
-        </tr>
-		
-		
-		
-		
-    </tbody>
-	
-	<div id="syncStatusBar">
-    <div class="status-left">
-        <div class="status-indicator synced" id="syncIndicator"></div>
-        <span class="status-text" id="syncStatusText">ซิงค์แล้ว</span>
-    </div>
-    <div class="status-right">
-
-    </div>
+<div style="margin-bottom: 15px; text-align: right;">
+    <button id="stockModeBtn" class="order-button stock-button" onclick="toggleStockMode()" style="width: auto; padding: 10px 20px;">
+        จัดการของหมด (ปิด)
+    </button>
 </div>
 
 
 
-</table>
-
-
-<div id="selectedItems">
-    <h2>อาหารที่เลือกไว้</h2>
-    <table id="selectedItemsTable">
-        <thead>
-            <tr>
-                <th>รายการ</th>
-                <th>จำนวน</th>
-                <th>เพิ่ม/ลด</th>
-				<th>คอมเมนต์</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
-
-<h2>บันทึกโต๊ะ</h2>
-
-
-  <div id="tableButtons">
-
-    <!-- เพิ่มปุ่มโต๊ะจองตรงนี้ครับ -->
-    <button class="table-button reservation-button" onclick="saveReservationTable()">โต๊ะจอง (แซงคิว)</button>
-
-     <button class="table-button" onclick="saveTable('000')">000</button>
-      <button class="table-button" onclick="saveTable('1')">โต๊ะ 1</button>
-      <button class="table-button" onclick="saveTable('2')">โต๊ะ 2</button>
-      <button class="table-button" onclick="saveTable('3')">โต๊ะ 3</button>
-      <button class="table-button" onclick="saveTable('4')">โต๊ะ 4</button>
-      <button class="table-button" onclick="saveTable('5')">โต๊ะ 5</button>
-      <button class="table-button" onclick="saveTable('6')">โต๊ะ 6</button>
-      <button class="table-button" onclick="saveTable('7')">โต๊ะ 7</button>
-      <button class="table-button" onclick="saveTable('8')">โต๊ะ 8</button>
-      <button class="table-button" onclick="saveTable('9')">โต๊ะ 9</button>
-      <button class="table-button" onclick="saveTable('10')">โต๊ะ 10</button>
-      <button class="table-button" onclick="saveTable('11')">โต๊ะ 11</button>
-      <button class="table-button" onclick="saveTable('12')">โต๊ะ 12</button>
-      <button class="table-button" onclick="saveTable('13')">โต๊ะ 13</button>
-      <button class="table-button" onclick="saveTable('14')">โต๊ะ 14</button>
-      <button class="table-button" onclick="saveTable('15')">โต๊ะ 15</button>
-      <button class="table-button" onclick="saveTable('16')">โต๊ะ 16</button>
-      <button class="table-button" onclick="saveTable('17')">โต๊ะ 17</button>
-      <button class="table-button" onclick="saveTable('18')">โต๊ะ 18</button>
-      <button class="table-button" onclick="saveTable('19')">โต๊ะ 19</button>
-      <button class="table-button" onclick="saveTable('20')">โต๊ะ 20</button>
-      <button class="table-button" onclick="saveTable('21')">โต๊ะ 21</button>
-      <button class="table-button" onclick="saveTable('22')">โต๊ะ 22</button>
-      <button class="table-button" onclick="saveTable('23')">โต๊ะ 23</button>
-	  <button class="table-button" onclick="saveTable('24')">โต๊ะ 24</button>
-	  <button class="table-button" onclick="saveTable('25')">โต๊ะ 25</button>
-  </div>
-
-  <h2>เปลี่ยนชื่อโต๊ะ</h2>
-  <input type="text" id="oldTableName" placeholder="ชื่อโต๊ะเก่า">
-  <input type="text" id="newTableName" placeholder="ชื่อโต๊ะใหม่">
-  <button class="table-button" onclick="changeTableName()">เปลี่ยนชื่อ</button>
-
-<div id="kitchenDisplay">
-  <h2>หน้าจอครัว</h2>
-  <div class="kitchen-sections">
-    <div class="chef-section"><h3 style="color: #008CBA; border-bottom: 2px solid #008CBA; padding-bottom: 8px;">กิ๊ก</h3><div id="chef-kik" class="chef-orders"></div></div>
-    <div class="chef-section"><h3 style="color: #008CBA; border-bottom: 2px solid #008CBA; padding-bottom: 8px;">เจี๊ยบ</h3><div id="chef-jeab" class="chef-orders"></div></div>
-    <div class="chef-section"><h3 style="color: #008CBA; border-bottom: 2px solid #008CBA; padding-bottom: 8px;">พลโท</h3><div id="chef-nan" class="chef-orders"></div></div>
-    <div class="chef-section"><h3 style="color: #008CBA; border-bottom: 2px solid #008CBA; padding-bottom: 8px;">ซี</h3><div id="chef-see" class="chef-orders"></div></div>
+<!-- ========== ส่วนเลือกหมวดหมู่ ========== -->
+<div id="categorySection">
+  <h2>เลือกหมวดหมู่</h2>
+  <div id="categoryButtons">
+    <!-- ปุ่มหมวดหมู่จะถูกสร้างที่นี่ -->
   </div>
 </div>
 
-<div id="tableOrders">
-      <h2>คิว</h2>
-      <table id="tableOrdersTable">
-          <thead>
-              <tr>
-                  <th>โต๊ะ</th>
-                  <th>รายการ</th>
-                  <th>จำนวน</th>
-                  <th>คอมเมนต์</th>
-                  <th>เวลารอ</th>
-                  <th>ส่ง</th>
-              </tr>
-          </thead>
-          <tbody></tbody>
-      </table>
+<!-- ========== ส่วนรายการอาหาร ========== -->
+<div id="menuSection">
+  <button id="backToCategoryBtn" onclick="backToCategory()">← กลับไปเลือกหมวดหมู่</button>
+  <h2 class="menu-category-title" id="currentCategoryName"></h2>
+  <div id="menuButtons">
+    <!-- ปุ่มรายการอาหารจะถูกสร้างที่นี่ -->
   </div>
-  <div id="totalOrders"></div>
-  <div id="completedOrders"></div>
   
-  <!-- ปุ่มจัดการด้านล่างแบบแบ่งซ้ายขวา -->
-  <div class="bottom-action-container">
-      
-      <!-- ฝั่งซ้าย: ปุ่มเรียกคืน (สีเหลือง) -->
-      <div>
-          <button class="order-button undo-button" onclick="undoLastComplete()">
-             ↩️ เรียกคืนรายการล่าสุด
-          </button>
-      </div>
+  
+</div>
 
-      <!-- ฝั่งขวา: ปุ่มล้าง (สีแดง) -->
-      <div>
-          <button class="order-button clear-button" onclick="clearCompletedOrders()">
-             🗑️ ล้างรายการที่เสร็จแล้ว
-          </button>
-      </div>
+<!-- แสดงรายการที่เลือก -->
+<!-- แสดงรายการที่เลือก -->
+<div id="selectedItemsDisplay">
+  <h2>อาหารที่เลือกไว้</h2>
+  <table id="selectedItemsTable">
+    <thead>
+      <tr>
+        <th>รายการ</th>
+        <th>จำนวน</th>
+        <th>เพิ่ม/ลด</th>
+        <th>คอมเมนต์</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
+
+
+<!-- เลือกโต๊ะ -->
+<div id="tableButtons"></div>
+
+
+<!-- เปลี่ยนชื่อโต๊ะ -->
+<h2>เปลี่ยนชื่อโต๊ะ</h2>
+<input type="text" id="oldTableName" placeholder="โต๊ะเดิม">
+<input type="text" id="newTableName" placeholder="โต๊ะใหม่">
+<button class="order-button move-button" onclick="changeTableName()">ย้ายโต๊ะ</button>
+
+<!-- แสดงคิว -->
+<div id="tableOrders">
+  <h2>คิว</h2>
+  <table id="tableOrdersTable">
+    <thead>
+      <tr>
+        <th>โต๊ะ</th>
+        <th>เมนู</th>
+        <th>จำนวน</th>
+        <th>คอมเมนต์</th>
+        <th>รอ</th>
+        <th>สถานะ</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- แสดงครัว -->
+<div id="kitchenDisplay">
+  <h2>ครัว</h2>
+  <div class="kitchen-sections">
+    <div class="chef-section">
+      <h3>กิ๊ก</h3>
+      <div class="chef-orders" id="chef-kik"></div>
+    </div>
+    <div class="chef-section">
+      <h3>เจี๊ยบ</h3>
+      <div class="chef-orders" id="chef-jeab"></div>
+    </div>
+    <div class="chef-section">
+      <h3>พลโท</h3>
+      <div class="chef-orders" id="chef-nan"></div>
+    </div>
+    <div class="chef-section">
+      <h3>ซี</h3>
+      <div class="chef-orders" id="chef-see"></div>
+    </div>
   </div>
+</div>
+
+<!-- เมนูซ้ำ -->
+<div id="totalOrders"></div>
+
+<!-- เสร็จแล้ว -->
+<div id="completedOrders"></div>
+
+<!-- ปุ่มล้างและเรียกคืน -->
+<div class="bottom-action-container">
+  <button class="order-button clear-button" onclick="clearCompletedOrders()">ล้างรายการที่เสร็จแล้ว</button>
+  <button class="order-button undo-button" onclick="undoLastComplete()">เรียกคืนรายการล่าสุด</button>
+</div>
+
+
 
  <script>
 // 1. Firebase Configuration
@@ -761,7 +518,109 @@ let isSyncing = false, isStockMode = false, saveTimeout = null;
 
 const LS_PREFIX = 'kaki_';
 const LS_KEYS = { ORDERS: LS_PREFIX + 'orders', COMPLETED: LS_PREFIX + 'completed', TOTAL: LS_PREFIX + 'total', TEMP: LS_PREFIX + 'temp' };
+const menuCategories = {
+ 'ของทอด': ['ปลาเนื้ออ่อน', 'ปลานิลแดดเดียว', 'หมูทอดสมุนไพร', 'สะเดาน้ำปลาหวาน'],
+  
+  'คั่ว': ['คั่วไก่', 'คั่วกบ', 'คั่วเนื้อ', 'คั่วหมู', 'คั่วปลาไหล', 'คั่วเครื่องใน'],
+  
+  'ต้มแซ่บ': ['ต้มแซ่บไก่', 'ต้มแซ่บเนื้อ', 'ต้มแซ่บหมู', 'ต้มแซ่บกระดูกอ่อน', 'ต้มแซ่บเครื่องใน'],
+  
+  'ปลาช่อน': ['ปลาช่อนแป๊ะซะ', 'ปลาช่อนแวะถัวะ'],
+  
+  'ปลานึ่ง': ['ปลาช่อน นึ่ง', 'ปลานิล นึ่ง', 'ปลาทับทิม นึ่ง'],
+  
+  'ผัดเผ็ด': ['ผัดเผ็ดหมูป่า', 'ผัดเผ็ดกระดูกหมู', 'ผัดเผ็ดเครื่องใน', 'ผัดเผ็ดนกหน่อไม้', 'ผัดเผ็ดนกใบยี่หร่า'],
+  
+  'ลาบ': ['ลาบเป็ด', 'ลาบปลา', 'ลาบปู'],
+  
+  'อ่อม': ['อ่อมไก่', 'อ่อมกบ', 'อ่อมหมู', 'อ่อมเนื้อ', 'อ่อมหอย', 'อ่อมเครื่องใน', 'อ่อมนก'],
+  
+  'แกงป่าผัก': ['แกงป่าผักไก่', 'แกงป่าผักหมู', 'แกงป่าผักเนื้อ', 'แกงป่าผักปลา', 'แกงป่าผักเครื่องใน', 'แกงป่าผักนก'],
+  
+  'แกงป่าหน่อไม้ดอง': ['แกงป่าหน่อไม้ดองไก่', 'แกงป่าหน่อไม้ดองหมู', 'แกงป่าหน่อไม้ดองเนื้อ', 'แสงโสม', 'แกงป่าหน่อไม้ดองเครื่องใน', 'แกงป่าหน่อไม้ดองนก'],
+  
+  'แกงป่าหน่อไม้สด': ['แกงป่าหน่อไม้สดไก่', 'แกงป่าหน่อไม้สดหมู', 'แกงป่าหน่อไม้สดเนื้อ', 'แกงป่าหน่อไม้สดปลา', 'แกงป่าหน่อไม้สดเครื่องใน', 'แกงป่าหน่อไม้สดนก'],
+  
+  'ไข่เจียว': ['ไข่เจียวบาว', 'ไข่เจียวหมูสับ', 'ไข่เจียวธรรมดา', 'ไข่เจียวไข่มดแดง'],
+  
+  'แกงหน่อไม้ดอง': ['แกงไก่หน่อ', 'แกงหมูหน่อ', 'แกงเนื้อหน่อ'],
+  
+  'แกงปลาหน่อไม้ดอง': ['แกงปลากดหน่อ', 'แกงปลาหลดหน่อ', 'แกงปลานิลหน่อ', 'แกงปลาเนื้ออ่อนหน่อ'],
+  
+  'แกง': ['แกงบอน', 'มะรุม', 'กระบุก', 'แกงหอย', 'ผักหวาน', 'ผักหวานไข่มดแดง', 'ผักหวานเห็ดเผาะ', 'ผักหวานไข่มดแดงใส่เห็ดเผาะ'],
+  
+  'อื่นๆ': ['ขาหมู', 'ผัดฉ่าขาหมู', 'หมูปลาร้า', 'หมูน้ำปลา', 'ไก่ปลาร้า', 'ไก่น้ำปลา', 'ข้าว', 'ขนม', 'หงษ์ทอง', 'สามชั้นใบยี่หร่า', 'เมนูพิเศษ', 'ของแถม'],
+  
+  'เมนูพิเศษ': ['หมกหม้อ', 'ขี้เหล็ก', 'ต้มจืด', 'ทอดมัน', 'หมกปลานิล', 'ไก่หลงทาง'],
+  
+  'ส้มตำ': ['ตำลาว', 'ตำปูปลาล้าปูนิ่ง', 'ตำปูปลาล้าปูดอง', 'ตำแตง', 'ตำถั่ว', 'ตำไทย', 'ตำโคราช', 'ตำซั่ว', 'ตำป่า', 'ตำหมูยอ', 'ตำมาม่า', 'ตำไทยไข่เค็ม', 'ตำโพดไข่เค็ม', 'ตำกุ้งสด', 'ตำกุ้งสุกกกก', 'ตำทะเล']
 
+};
+
+let currentCategory = null;
+
+// ฟังก์ชันสร้างปุ่มหมวดหมู่
+function createCategoryButtons() {
+  const container = document.getElementById('categoryButtons');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  for (const categoryName in menuCategories) {
+    const btn = document.createElement('button');
+    btn.className = 'category-button';
+    btn.textContent = categoryName;
+    
+    // --- เพิ่มส่วนตรวจสอบชื่อเพื่อเปลี่ยนสีที่นี่ ---
+    if (['แกงป่าผัก', 'แกงป่าหน่อไม้ดอง', 'แกงป่าหน่อไม้สด'].includes(categoryName)) {
+      btn.classList.add('category-blue');
+    } 
+    else if (['แกงหน่อไม้ดอง', 'แกงปลาหน่อไม้ดอง'].includes(categoryName)) {
+      btn.classList.add('category-yellow');
+    }
+    // ------------------------------------------
+
+    btn.onclick = () => showMenuItems(categoryName);
+    container.appendChild(btn);
+  }
+}
+// ฟังก์ชันแสดงรายการอาหารในหมวดหมู่
+function showMenuItems(categoryName) {
+  currentCategory = categoryName;
+  
+  document.getElementById('categorySection').style.display = 'none';
+  document.getElementById('menuSection').style.display = 'block';
+  document.getElementById('backToCategoryBtn').style.display = 'inline-block';
+  document.getElementById('currentCategoryName').textContent = categoryName;
+  
+  const container = document.getElementById('menuButtons');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  const menuItems = menuCategories[categoryName];
+  menuItems.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'order-button';
+    
+    // สร้างข้อความชื่อเมนูและ span สำหรับตัวเลข
+    btn.innerHTML = `${item} <span id="quantity${item}">${orderCounts[item] || 0}</span>`;
+    
+    btn.onclick = () => placeOrder(item);
+    
+    if (soldOutMap && soldOutMap[item]) {
+      btn.classList.add('sold-out');
+    }
+    
+    container.appendChild(btn);
+  });
+}
+
+// ฟังก์ชันกลับไปหน้าหมวดหมู่
+function backToCategory() {
+  currentCategory = null;
+  document.getElementById('categorySection').style.display = 'block';
+  document.getElementById('menuSection').style.display = 'none';
+  document.getElementById('backToCategoryBtn').style.display = 'none';
+}
 // 3. Helper Functions
 function saveToLocalStorage(key, data) {
     try { localStorage.setItem(key, JSON.stringify({ data: data, time: Date.now() })); } catch (e) {}
@@ -774,7 +633,7 @@ function loadFromLocalStorage(key) {
 function flashButton(b, colorClass = 'flash-red') { 
     if(b) { b.classList.add(colorClass); setTimeout(()=>b.classList.remove(colorClass), 200); } 
 }
-
+let selectionOrder = []; // เพิ่มตัวนี้เพื่อจำว่ากดอะไรก่อนหลัง
 // 4. Core App Logic
 function placeOrder(p) {
     if (isStockMode) {
@@ -783,11 +642,22 @@ function placeOrder(p) {
         return;
     }
     if (soldOutMap[p]) return;
-    const b = document.querySelector(`button[onclick="placeOrder('${p}')"]`);
-    flashButton(b);
+
+    // ถ้ายังไม่มีเมนูนี้ในรายการที่เลือก ให้ใส่ชื่อเข้าไปในลำดับ
+    if (!selectionOrder.includes(p)) {
+        selectionOrder.push(p);
+    }
+
+    const allBtns = document.querySelectorAll('#menuButtons button');
+    let targetBtn = Array.from(allBtns).find(b => b.innerText.includes(p));
+    if(targetBtn) flashButton(targetBtn);
+
     orderCounts[p] = (orderCounts[p] || 0) + 1;
-    document.getElementById('quantity' + p).innerText = orderCounts[p];
-    showSelectedItems(); // วาดตารางเลือกอาหารใหม่
+    
+    const qtySpan = document.getElementById('quantity' + p);
+    if(qtySpan) qtySpan.innerText = orderCounts[p];
+    
+    showSelectedItems(); 
     saveTemporaryData();
 }
 
@@ -804,34 +674,68 @@ function showSelectedItems() {
     const tbody = document.querySelector('#selectedItemsTable tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    for (let i in orderCounts) {
+
+    // เปลี่ยนจากวนลูป Object มาวนลูปตามลำดับที่กด (selectionOrder)
+    selectionOrder.forEach((i) => {
         if (orderCounts[i] > 0) {
             const r = tbody.insertRow();
-            r.insertCell().textContent = i;
-            r.insertCell().textContent = orderCounts[i];
+            r.insertCell().textContent = i; // ชื่อเมนู
+            r.insertCell().textContent = orderCounts[i]; // จำนวน
+            
+            // ปุ่มเพิ่ม/ลด
             const a = r.insertCell();
-            a.innerHTML = `<button onclick="decrementOrderCount('${i}')">-</button> <button onclick="incrementOrderCount('${i}')">+</button>`;
+            a.innerHTML = `
+                <button class="order-button" style="width:40px; padding:5px; margin:2px; background:#e74c3c;" onclick="decrementOrderCount('${i}')">-</button>
+                <button class="order-button" style="width:40px; padding:5px; margin:2px; background:#2ecc71;" onclick="incrementOrderCount('${i}')">+</button>
+            `;
+
+            // ช่องคอมเมนต์
             const c = r.insertCell();
             const input = document.createElement('input');
-            input.type = 'text'; input.className = 'comment-input-selected'; 
+            input.type = 'text'; 
+            input.className = 'comment-input-selected'; 
             input.value = menuComments[i] || '';
             input.placeholder = 'คอมเมนต์...';
-            // แก้ไขปัญหา "เด้ง": ไม่อนุญาตให้ Re-render ตารางขณะพิมพ์
             input.oninput = (e) => { 
                 menuComments[i] = e.target.value; 
                 saveTemporaryData(); 
             };
             c.appendChild(input);
         }
-    }
+    });
 }
 
-function incrementOrderCount(i) { orderCounts[i]++; document.getElementById('quantity'+i).innerText = orderCounts[i]; showSelectedItems(); saveTemporaryData(); }
-function decrementOrderCount(i) { if(orderCounts[i]>0) { orderCounts[i]--; document.getElementById('quantity'+i).innerText = orderCounts[i]; showSelectedItems(); saveTemporaryData(); } }
+function incrementOrderCount(i) { 
+    orderCounts[i] = (orderCounts[i] || 0) + 1; 
+    const el = document.getElementById('quantity' + i);
+    if(el) el.innerText = orderCounts[i];
+    showSelectedItems(); 
+    saveTemporaryData(); 
+}
 
+function decrementOrderCount(i) { 
+    if(orderCounts[i] > 0) { 
+        orderCounts[i]--; 
+        const el = document.getElementById('quantity' + i);
+        if(el) el.innerText = orderCounts[i];
+        
+        // ถ้าลดจนเหลือ 0 ให้เอาออกจากลำดับการโชว์ด้วย
+        if(orderCounts[i] === 0) {
+            selectionOrder = selectionOrder.filter(item => item !== i);
+        }
+        
+        showSelectedItems(); 
+        saveTemporaryData(); 
+    } 
+}
 function clearSelectedItems() {
-    for (let i in orderCounts) { orderCounts[i] = 0; if(document.getElementById('quantity'+i)) document.getElementById('quantity'+i).innerText = '0'; }
+    for (let i in orderCounts) { 
+        orderCounts[i] = 0; 
+        const el = document.getElementById('quantity' + i);
+        if(el) el.innerText = '0'; 
+    }
     menuComments = {};
+    selectionOrder = []; // ล้างลำดับที่เลือกทิ้ง
     showSelectedItems();
     db.ref('tempData').remove();
     localStorage.removeItem(LS_KEYS.TEMP);
@@ -1015,9 +919,26 @@ function toggleStockMode() {
 }
 
 function updateSoldOutVisuals() {
-    document.querySelectorAll('button[onclick^="placeOrder"]').forEach(btn => {
-        const m = btn.getAttribute('onclick').match(/'(.+?)'/)[1];
-        btn.classList.toggle('sold-out', !!soldOutMap[m]);
+    // หาปุ่มสั่งอาหารทั้งหมดที่กำลังโชว์อยู่บนจอ
+    const buttons = document.querySelectorAll('#menuButtons button');
+    
+    buttons.forEach(btn => {
+        let isMatch = false;
+        
+        // วนเช็ครายชื่อของหมดในฐานข้อมูล
+        for (let itemName in soldOutMap) {
+            // ถ้าในปุ่มมีชื่อเมนูที่หมด (เช่น ในปุ่ม "ปลาเนื้ออ่อน 4" มีคำว่า "ปลาเนื้ออ่อน")
+            if (soldOutMap[itemName] === true && btn.innerText.includes(itemName)) {
+                isMatch = true;
+                break; 
+            }
+        }
+
+        if (isMatch) {
+            btn.classList.add('sold-out'); // เปลี่ยนเป็นสีเทา + ขีดฆ่า
+        } else {
+            btn.classList.remove('sold-out'); // กลับเป็นสีเขียวปกติ
+        }
     });
 }
 
@@ -1033,7 +954,9 @@ function changeTableName(){
 }
 
 // 7. Initial & Listeners
-window.addEventListener('load', () => {
+window.addEventListener('load', () => { 
+
+
     // Load local first
     orders = loadFromLocalStorage(LS_KEYS.ORDERS) || [];
     completedOrders = loadFromLocalStorage(LS_KEYS.COMPLETED) || [];
@@ -1042,6 +965,29 @@ window.addEventListener('load', () => {
     if(tData) { orderCounts = tData.orderCounts; menuComments = tData.comments; }
 
     showTableOrders(); showTotalOrders(); showCompletedOrders(); showSelectedItems();
+	createCategoryButtons();
+
+const tableContainer = document.getElementById('tableButtons');
+    if (tableContainer) {
+        tableContainer.innerHTML = ''; // ล้างค่าว่างเก่าออก
+        
+        // สร้างปุ่มโต๊ะจองก่อน
+        const resBtn = document.createElement('button');
+        resBtn.className = 'table-button reservation-button';
+        resBtn.textContent = 'โต๊ะจอง (แซงคิว)';
+        resBtn.onclick = () => saveReservationTable();
+        tableContainer.appendChild(resBtn);
+
+        // วนลูปสร้างปุ่มโต๊ะ 1 ถึง 25
+        for (let i = 1; i <= 25; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'table-button';
+            btn.textContent = 'โต๊ะ ' + i;
+            btn.onclick = () => saveTable(i.toString());
+            tableContainer.appendChild(btn);
+        }
+    }
+
 
     // Online Status
     window.addEventListener('online', updateSyncStatus);
@@ -1081,6 +1027,8 @@ window.addEventListener('load', () => {
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 </script>
+
+
 
 </body>
 </html>
