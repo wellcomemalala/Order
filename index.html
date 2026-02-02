@@ -338,32 +338,72 @@ function showTableOrders() {
     const tbody = document.querySelector('#tableOrdersTable tbody');
     tbody.innerHTML = '';
     const sorted = [...orders].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
     sorted.forEach(o => {
         const r = tbody.insertRow();
         const mins = Math.floor((new Date() - new Date(o.timestamp)) / 60000);
-        r.className = mins >= 10 ? 'wait-long' : (mins >= 5 ? 'wait-medium' : 'wait-normal');
+        
+        // --- ส่วนที่เพิ่มใหม่: เช็คสถานะอาหารเสร็จ ---
+        const isReady = o.status === 'ready';
+        if (isReady) {
+            r.style.backgroundColor = '#d4edda'; // สีเขียวอ่อน
+            r.style.fontWeight = 'bold';
+        } else if (mins >= 10) {
+            r.className = 'wait-long';
+        } else if (mins >= 5) {
+            r.className = 'wait-medium';
+        }
+        // --------------------------------------
+
         r.insertCell().textContent = 'โต๊ะ ' + o.table;
-        r.insertCell().textContent = o.item;
+        
+        // ใส่ชื่อเมนู (ถ้าเสร็จแล้วให้ขีดฆ่า)
+        const itemCell = r.insertCell();
+        if (isReady) {
+           itemCell.innerHTML = `<span style="color: #155724; font-weight: bold;">✅ ${o.item} (เสร็จแล้ว!)</span>`;
+        } else {
+            itemCell.textContent = o.item;
+        }
+
         r.insertCell().textContent = o.quantity;
+        
         const cCell = r.insertCell();
-        cCell.innerHTML = `<input value="${o.comment || ''}" onchange="db.ref('${BASE_PATH}orders/${o.id}/comment').set(this.value)">`;
+        cCell.innerHTML = `<input value="${o.comment || ''}" onchange="db.ref('${BASE_PATH}orders/${o.id}/comment').set(this.value)" style="width:70px">`;
+        
         r.insertCell().textContent = mins + ' นาที';
+        
         const btn = document.createElement('button');
-        btn.className = 'order-button complete-button'; btn.textContent = 'ส่ง';
+        btn.className = 'order-button complete-button'; 
+        btn.textContent = isReady ? 'พร้อมส่ง' : 'ส่ง';
+        // ถ้าเสร็จแล้วให้ปุ่มสีเข้มขึ้น
+        if (isReady) btn.style.backgroundColor = '#28a745';
+        
         btn.onclick = () => handleComplete(o.id);
         r.insertCell().appendChild(btn);
     });
 }
 
+// ค้นหาฟังก์ชัน showTotalOrders ในไฟล์ index.html แล้วนำโค้ดนี้ไปทับครับ
 function showTotalOrders() {
     const t = document.getElementById('totalOrders'); t.innerHTML = '<h2>เมนูซ้ำ</h2>';
     const b = {};
+    
+    // 1. จัดกลุ่ม และเก็บเวลาที่เก่าที่สุดของกลุ่มนั้นไว้
     orders.forEach(o => {
         const k = nonBatchableMenuItems.includes(o.item) ? `${o.item}-${o.timestamp}` : `${o.item}-${o.comment}`;
-        if (!b[k]) b[k] = { item: o.item, comment: o.comment, reg: 0, th: 0 };
+        if (!b[k]) b[k] = { item: o.item, comment: o.comment, reg: 0, th: 0, minTs: o.timestamp };
+        
+        // เก็บเวลาที่น้อยที่สุด (เก่าที่สุด) เพื่อใช้เรียงลำดับ
+        if (new Date(o.timestamp) < new Date(b[k].minTs)) b[k].minTs = o.timestamp;
+        
         /[ก-๙]/.test(o.table) ? b[k].th += o.quantity : b[k].reg += o.quantity;
     });
-    Object.values(b).forEach(i => {
+
+    // 2. แปลงเป็น Array แล้วเรียงลำดับตาม minTs (ใครเวลาเก่ากว่า/แซงคิว อยู่บน)
+    const sortedGroups = Object.values(b).sort((x, y) => new Date(x.minTs) - new Date(y.minTs));
+
+    // 3. แสดงผล
+    sortedGroups.forEach(i => {
         const C = i.comment ? ` (${i.comment})` : '';
         let d = `${i.th + i.reg},${i.item}${C} ${i.reg}${i.th > 0 ? ', ก '+i.th : ''}`;
         const p = document.createElement('p'); p.textContent = d; t.appendChild(p);
