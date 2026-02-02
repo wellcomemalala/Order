@@ -39,6 +39,10 @@
   .wait-medium { background-color: #fff3cd; }
   .wait-long { background-color: #f8d7da; }
   #syncStatusBar { position: fixed; top: 0; left: 0; right: 0; height: 30px; background: linear-gradient(to right, #4CAF50, #45a049); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; z-index: 1001; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  /* เพิ่มตรงนี้ */
+#syncStatusBar.offline {
+    background: linear-gradient(to right, #e74c3c, #c0392b); /* สีแดง */
+}
   #selectedItemsDisplay { background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
   .comment-input-selected { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
   .category-blue { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important; color: white !important; }
@@ -442,8 +446,19 @@ window.addEventListener('load', () => {
         showSelectedItems();
     });
     db.ref(".info/connected").on("value", snap => {
-        document.getElementById('syncStatusText').textContent = snap.val() ? "ออนไลน์ (ID: " + deviceId + ")" : "ออฟไลน์";
-    });
+    const statusBar = document.getElementById('syncStatusBar');
+    const statusText = document.getElementById('syncStatusText');
+    
+    if (snap.val()) {
+        // ออนไลน์ - สีเขียว
+        statusText.textContent = "ออนไลน์ (ID: " + deviceId + ")";
+        statusBar.classList.remove('offline'); // ลบคลาส offline
+    } else {
+        // ออฟไลน์ - สีแดง
+        statusText.textContent = "ออฟไลน์";
+        statusBar.classList.add('offline'); // เพิ่มคลาส offline
+    }
+});
     setInterval(showTableOrders, 30000);
 });
 
