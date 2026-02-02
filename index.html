@@ -47,6 +47,28 @@
   .kitchen-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
   .chef-section { background-color: white; padding: 12px; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
   .chef-orders { min-height: 40px; font-size: 16px; line-height: 1.4; }
+  
+  
+  #oldTableName, #newTableName {
+    font-size: 26px;      /* ขนาดตัวอักษรใหญ่ขึ้น */
+    padding: 12px;        /* เพิ่มความหนาของช่องกรอก */
+    margin: 10px;         /* เว้นระยะห่างระหว่างช่อง */
+    width: 220px;         /* ความกว้างของช่อง */
+    border: 2px solid #008CBA; /* เส้นขอบหนาขึ้นและมีสีน้ำเงิน */
+    border-radius: 8px;   /* ขอบมน */
+    box-sizing: border-box;
+  }
+
+  /* ปรับปุ่มย้ายโต๊ะให้ใหญ่สมดุลกับช่องกรอก */
+  .move-button {
+    font-size: 22px !important;
+    padding: 12px 30px !important;
+    width: auto !important;
+    margin-left: 10px;
+  }
+  
+  
+  
 </style>
 </head>
 <body>
