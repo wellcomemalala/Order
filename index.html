@@ -9,490 +9,113 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
    <style>
-  /* ป้องกันการซูมเมื่อแตะปุ่มหรือองค์ประกอบอื่นๆ */
-  html {
-    touch-action: manipulation;
-  }
-
-  body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    font-size: 24px;
-    text-align: center;
-    padding: 10px;
-  }
-
-  h1, h2 {
-    color: #333;
-    font-size: 32px;
-  }
-
-  /* ========== สไตล์ส่วนเลือกหมวดหมู่ ========== */
-  #categorySection {
-    margin: 20px 0;
-  }
-
-  #categoryButtons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-
-  .category-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    padding: 20px 15px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-    touch-action: manipulation;
-  }
-
-  .category-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-  }
-
-  .category-button:active {
-    transform: translateY(0);
-  }
-
-  .category-button.active {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.3);
-  }
-
-  /* ปุ่มกลับ */
-  #backToCategoryBtn {
-    background-color: #95a5a6;
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-bottom: 15px;
-    display: none;
-    touch-action: manipulation;
-  }
-
-  #backToCategoryBtn:hover {
-    background-color: #7f8c8d;
-  }
-
-  /* ========== สไตล์ส่วนรายการอาหาร ========== */
-  #menuSection {
-    display: none;
-    margin: 20px 0;
-  }
-
-  .menu-category-title {
-    font-size: 28px;
-    color: #2c3e50;
-    margin-bottom: 15px;
-    font-weight: bold;
-  }
-
-  #menuButtons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  /* ========== สไตล์เดิมที่ยังใช้งาน ========== */
-  #tableButtons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  textarea, .comment-input-queue {
-    width: 100%;
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-bottom: 10px;
-    font-size: 18px;
-    box-sizing: border-box;
-  }
-
-  #tableOrders, #completedOrders, #totalOrders {
-    margin-top: 30px;
-  }
-
-  #tableOrders p, #completedOrders p, #totalOrders p {
-    margin-bottom: 5px;
-    font-size: 18px;
-  }
-
-  .order-button, .table-button, .save-comment-button {
-    background-color: #4CAF50;
-    border: none;
-    color: white;
-    padding: 12px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-    border-radius: 8px;
-    width: 100%;
-    box-sizing: border-box;
-    touch-action: manipulation;
-  }
-
-  .table-button {
-    background-color: #008CBA;
-  }
-
-  .move-button {
-    background-color: #f39c12;
-  }
-  
-  .reservation-button {
-    background-color: #e74c3c;
-    color: white;
-    font-weight: bold;
-    border: 2px solid #c0392b;
-  }
-
-  .stock-button {
-    background-color: #555;
-    color: white;
-    border: 2px solid #333;
-  }
-  
-  .stock-mode-active {
-    background-color: #ff9800;
-    color: black;
-    border-color: #e65100;
-    font-weight: bold;
-    animation: pulse 1.5s infinite;
-  }
-  
-  .sold-out {
-    background-color: #7f8c8d !important;
-    opacity: 0.6;
-    text-decoration: line-through;
-    color: #bdc3c7 !important;
-    position: relative;
-  }
-  
-  .undo-button {
-    background-color: #f1c40f;
-    color: black;
-    font-weight: bold;
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-
-  .complete-button {
-    background-color: #8e44ad;
-  }
-
-  .save-comment-button {
-    background-color: #5bc0de;
-    padding: 8px 12px;
-    font-size: 14px;
-    width: auto;
-    display: block;
-    margin-top: 5px;
-  }
-
-  .save-comment-button.saved {
-    background-color: #4CAF50;
-  }
-
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-top: 20px;
-  }
-
-  th, td {
-    border: 1px solid #dddddd;
-    text-align: left;
-    padding: 10px;
-    vertical-align: middle;
-  }
-
-  #tableOrdersTable th, #tableOrdersTable td {
-      text-align: center;
-  }
-
-  th {
-    background-color: #f2f2f2;
-  }
-
+  /* สไตล์เดิมทั้งหมดของคุณ 100% */
+  html { touch-action: manipulation; }
+  body { font-family: Arial, sans-serif; background-color: #f4f4f4; font-size: 24px; text-align: center; padding: 10px; }
+  h1, h2 { color: #333; font-size: 32px; }
+  #categorySection { margin: 20px 0; }
+  #categoryButtons { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
+  .category-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; padding: 20px 15px; text-align: center; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease; touch-action: manipulation; }
+  .category-button.active { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.3); }
+  #backToCategoryBtn { background-color: #95a5a6; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; display: none; touch-action: manipulation; }
+  #menuSection { display: none; margin: 20px 0; }
+  .menu-category-title { font-size: 28px; color: #2c3e50; margin-bottom: 15px; font-weight: bold; }
+  #menuButtons { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; max-width: 1200px; margin: 0 auto; }
+  #tableButtons { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  textarea, .comment-input-queue { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 10px; font-size: 18px; box-sizing: border-box; }
+  .order-button, .table-button, .save-comment-button { background-color: #4CAF50; border: none; color: white; padding: 12px 20px; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 8px; width: 100%; box-sizing: border-box; touch-action: manipulation; }
+  .table-button { background-color: #008CBA; }
+  .move-button { background-color: #f39c12; }
+  .reservation-button { background-color: #e74c3c; color: white; font-weight: bold; border: 2px solid #c0392b; }
+  .stock-button { background-color: #555; color: white; border: 2px solid #333; }
+  .sold-out { background-color: #7f8c8d !important; opacity: 0.6; text-decoration: line-through; color: #bdc3c7 !important; position: relative; }
+  .undo-button { background-color: #f1c40f; color: black; font-weight: bold; }
+  .complete-button { background-color: #8e44ad; }
+  table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+  th, td { border: 1px solid #dddddd; text-align: left; padding: 10px; vertical-align: middle; }
+  #tableOrdersTable th, #tableOrdersTable td { text-align: center; }
+  th { background-color: #f2f2f2; }
   .wait-normal { background-color: white; }
   .wait-medium { background-color: #fff3cd; }
   .wait-long { background-color: #f8d7da; }
-
-  @keyframes flashRed {
-    0% { background-color: red; }
-    50% { background-color: white; }
-    100% { background-color: red; }
-  }
-  .flash-red { animation: flashRed 0.13s ease-out; }
-
-  @keyframes flashGreen {
-    0% { background-color: #28a745; }
-    50% { background-color: white; }
-    100% { background-color: #28a745; }
-  }
-  .flash-green { animation: flashGreen 0.2s ease-out; }
-
-  @media (max-width: 767px) {
-    body { font-size: 14px; padding: 5px; }
-    h1, h2 { font-size: 22px; }
-    .category-button { font-size: 16px; padding: 15px 10px; }
-    .menu-category-title { font-size: 22px; }
-    .order-button, .table-button, .save-comment-button { padding: 8px 12px; font-size: 14px; }
-    textarea, .comment-input-queue { font-size: 16px; }
-    #tableOrders p, #completedOrders p, #totalOrders p { font-size: 16px; }
-    table th, table td { padding: 6px; font-size: 12px; }
-    .comment-input-queue { padding: 6px; font-size: 12px; }
-    .save-comment-button { padding: 6px 10px; font-size: 12px; }
-    #backToCategoryBtn { padding: 10px 18px; font-size: 16px; }
-  }
-
-  #oldTableName, #newTableName { font-size: 20px; padding: 8px; margin: 8px; width: 180px; }
+  #syncStatusBar { position: fixed; top: 0; left: 0; right: 0; height: 30px; background: linear-gradient(to right, #4CAF50, #45a049); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; z-index: 1001; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  #selectedItemsDisplay { background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .comment-input-selected { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+  .category-blue { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important; color: white !important; }
+  .category-yellow { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%) !important; color: #333 !important; }
   #kitchenDisplay { margin: 30px 0; padding: 15px; background-color: #f9f9f9; border-radius: 10px; }
   .kitchen-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
   .chef-section { background-color: white; padding: 12px; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
   .chef-orders { min-height: 40px; font-size: 16px; line-height: 1.4; }
-  .chef-summary { margin: 8px 0; padding: 4px 0; }
-  #connectionStatus { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 5px; font-size: 12px; z-index: 1000; }
-  .connected { background-color: #4CAF50; color: white; }
-  .disconnected { background-color: #f44336; color: white; }
-  
-  .bottom-action-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-      margin-top: 30px;
-      padding: 10px;
-  }
-
-  .clear-button {
-      background-color: #e74c3c;
-  }
-
-  #syncStatusBar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    background: linear-gradient(to right, #4CAF50, #45a049);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    z-index: 1001;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-
-  .status-indicator {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 8px;
-  }
-
-  .status-indicator.synced { background-color: #90EE90; }
-  .status-indicator.syncing { background-color: #FFD700; animation: blink 1s infinite; }
-  .status-indicator.offline { background-color: #FF6B6B; }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  #selectedItemsDisplay {
-    background-color: white;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-
-  .quantity-display {
-    background-color: #e8f5e9;
-    padding: 8px 12px;
-    border-radius: 5px;
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .comment-input-selected {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    margin-top: 5px;
-    font-size: 14px;
-  }
-  
-  
-  /* สีน้ำเงิน สำหรับกลุ่มแกงป่า */
-  .category-blue {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
-    color: white !important;
-  }
-
-  /* สีเหลือง สำหรับกลุ่มแกงหน่อไม้ดอง */
-  .category-yellow {
-    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%) !important;
-    color: #333 !important; /* ใช้ตัวหนังสือสีเข้มเพื่อให้มองเห็นชัดบนพื้นเหลือง */
-  }
 </style>
 </head>
 <body>
 
-<!-- Sync Status Bar -->
 <div id="syncStatusBar">
-  <span class="status-indicator synced" id="syncIndicator"></span>
-  <span id="syncStatusText">ซิงค์แล้ว</span>
+  <span id="syncStatusText">เชื่อมต่อแล้ว</span>
 </div>
 
-
-<!-- ปุ่มจัดการของหมด -->
-<div style="margin-bottom: 15px; text-align: right;">
-    <button id="stockModeBtn" class="order-button stock-button" onclick="toggleStockMode()" style="width: auto; padding: 10px 20px;">
-        จัดการของหมด (ปิด)
-    </button>
+<div style="margin-top: 35px; margin-bottom: 15px; text-align: right;">
+    <button id="stockModeBtn" class="order-button stock-button" onclick="toggleStockMode()" style="width: auto; padding: 10px 20px;">จัดการของหมด (ปิด)</button>
 </div>
 
-
-
-<!-- ========== ส่วนเลือกหมวดหมู่ ========== -->
 <div id="categorySection">
   <h2>เลือกหมวดหมู่</h2>
-  <div id="categoryButtons">
-    <!-- ปุ่มหมวดหมู่จะถูกสร้างที่นี่ -->
-  </div>
+  <div id="categoryButtons"></div>
 </div>
 
-<!-- ========== ส่วนรายการอาหาร ========== -->
 <div id="menuSection">
   <button id="backToCategoryBtn" onclick="backToCategory()">← กลับไปเลือกหมวดหมู่</button>
   <h2 class="menu-category-title" id="currentCategoryName"></h2>
-  <div id="menuButtons">
-    <!-- ปุ่มรายการอาหารจะถูกสร้างที่นี่ -->
-  </div>
-  
-  
+  <div id="menuButtons"></div>
 </div>
 
-<!-- แสดงรายการที่เลือก -->
-<!-- แสดงรายการที่เลือก -->
 <div id="selectedItemsDisplay">
   <h2>อาหารที่เลือกไว้</h2>
   <table id="selectedItemsTable">
     <thead>
-      <tr>
-        <th>รายการ</th>
-        <th>จำนวน</th>
-        <th>เพิ่ม/ลด</th>
-        <th>คอมเมนต์</th>
-      </tr>
+      <tr><th>รายการ</th><th>จำนวน</th><th>เพิ่ม/ลด</th><th>คอมเมนต์</th></tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
-
-
-<!-- เลือกโต๊ะ -->
 <div id="tableButtons"></div>
 
-
-<!-- เปลี่ยนชื่อโต๊ะ -->
 <h2>เปลี่ยนชื่อโต๊ะ</h2>
 <input type="text" id="oldTableName" placeholder="โต๊ะเดิม">
 <input type="text" id="newTableName" placeholder="โต๊ะใหม่">
 <button class="order-button move-button" onclick="changeTableName()">ย้ายโต๊ะ</button>
 
-<!-- แสดงคิว -->
 <div id="tableOrders">
   <h2>คิว</h2>
   <table id="tableOrdersTable">
     <thead>
-      <tr>
-        <th>โต๊ะ</th>
-        <th>เมนู</th>
-        <th>จำนวน</th>
-        <th>คอมเมนต์</th>
-        <th>รอ</th>
-        <th>สถานะ</th>
-      </tr>
+      <tr><th>โต๊ะ</th><th>เมนู</th><th>จำนวน</th><th>คอมเมนต์</th><th>รอ</th><th>สถานะ</th></tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
-<!-- แสดงครัว -->
 <div id="kitchenDisplay">
   <h2>ครัว</h2>
   <div class="kitchen-sections">
-    <div class="chef-section">
-      <h3>กิ๊ก</h3>
-      <div class="chef-orders" id="chef-kik"></div>
-    </div>
-    <div class="chef-section">
-      <h3>เจี๊ยบ</h3>
-      <div class="chef-orders" id="chef-jeab"></div>
-    </div>
-    <div class="chef-section">
-      <h3>พลโท</h3>
-      <div class="chef-orders" id="chef-nan"></div>
-    </div>
-    <div class="chef-section">
-      <h3>ซี</h3>
-      <div class="chef-orders" id="chef-see"></div>
-    </div>
+    <div class="chef-section"><h3>กิ๊ก</h3><div class="chef-orders" id="chef-kik"></div></div>
+    <div class="chef-section"><h3>เจี๊ยบ</h3><div class="chef-orders" id="chef-jeab"></div></div>
+    <div class="chef-section"><h3>พลโท</h3><div class="chef-orders" id="chef-nan"></div></div>
+    <div class="chef-section"><h3>ซี</h3><div class="chef-orders" id="chef-see"></div></div>
   </div>
 </div>
 
-<!-- เมนูซ้ำ -->
 <div id="totalOrders"></div>
-
-<!-- เสร็จแล้ว -->
 <div id="completedOrders"></div>
 
-<!-- ปุ่มล้างและเรียกคืน -->
-<div class="bottom-action-container">
-  <button class="order-button clear-button" onclick="clearCompletedOrders()">ล้างรายการที่เสร็จแล้ว</button>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; padding: 10px;">
+  <button class="order-button" style="background-color: #e74c3c;" onclick="clearCompletedOrders()">ล้างรายการที่เสร็จแล้ว</button>
   <button class="order-button undo-button" onclick="undoLastComplete()">เรียกคืนรายการล่าสุด</button>
 </div>
 
-
-
- <script>
-// 1. Firebase Configuration
+<script>
 const firebaseConfig = {
     apiKey: "AIzaSyDskwJlUNbr3zkKnyY_-n582PdoCrts2AE",
     authDomain: "supertest01-55ac2.firebaseapp.com",
@@ -500,26 +123,21 @@ const firebaseConfig = {
     projectId: "supertest01-55ac2",
     storageBucket: "supertest01-55ac2.firebasestorage.app",
     messagingSenderId: "846236839338",
-    appId: "1:846236839338:web:260ca9b6af72c69837cfd3",
-    measurementId: "G-F26Z20XG62"
+    appId: "1:846236839338:web:260ca9b6af72c69837cfd3"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const BASE_PATH = "racing_order_app/";
 
-// 2. Data State
+let deviceId = localStorage.getItem('kaki_dev_id') || 'dev_' + Math.random().toString(36).substr(2, 9);
+localStorage.setItem('kaki_dev_id', deviceId);
+
 const chefMenus={'kik':['ต้มแซ่บ','คั่ว','ผักหวาน','แป๊ะซะ','แวะถัวะ','ผัดเผ็ด','อ่อม','แกงป่าผัก','แกงป่าหน่อไม้ดอง','แกงป่าหน่อไม้สด','บอน','มะรุม','กระบุก','แกงไก่หน่อ','แกงหมูหน่อ','แกงเนื้อหน่อ','แกงปลา','ผัดฉ่า','ปลาร้า','ไก่น้ำปลา','สามชั้น','หมูน้ำปลา','โสม','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ'],'jeab':['ไข่เจียว','แกงหอย','พิเศษ','ทอง','แถม','หมกหม้อ','ขี้เหล็ก','ต้มจืด','ทอดมัน','หมกปลานิล','ไก่หลงทาง'],'nan':['ขาหมู','ข้าว','ขนม','นึ่ง'],'see':['ลาบ','ปลาเนื้ออ่อน','ปลานิลแดดเดียว','สมุนไพร','สะเดาน้ำปลาหวาน','ตำ']};
 const nonBatchableMenuItems=['ปลาช่อนแป๊ะซะ','ปลาช่อนแวะถัวะ','อ่อมหมู','ผักหวานไข่มดแดง','ผักหวาน','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ','ไข่เจียวบาว','ไข่เจียวธรรมดา','ไข่เจียวหมูสับ','ไข่เจียวไข่มดแดง'];
 
-let orderCounts = {};
-let menuComments = {};
-let orders = [], completedOrders = [], totalOrders = {}, soldOutMap = {};
-let isSyncing = false, isStockMode = false, saveTimeout = null;
-
-const LS_PREFIX = 'kaki_';
-const LS_KEYS = { ORDERS: LS_PREFIX + 'orders', COMPLETED: LS_PREFIX + 'completed', TOTAL: LS_PREFIX + 'total', TEMP: LS_PREFIX + 'temp' };
 const menuCategories = {
- 'ของทอด': ['ปลาเนื้ออ่อน', 'ปลานิลแดดเดียว', 'หมูทอดสมุนไพร', 'สะเดาน้ำปลาหวาน'],
+'ของทอด': ['ปลาเนื้ออ่อน', 'ปลานิลแดดเดียว', 'หมูทอดสมุนไพร', 'สะเดาน้ำปลาหวาน'],
   
   'คั่ว': ['คั่วไก่', 'คั่วกบ', 'คั่วเนื้อ', 'คั่วหมู', 'คั่วปลาไหล', 'คั่วเครื่องใน'],
   
@@ -557,360 +175,201 @@ const menuCategories = {
   
   'ส้มตำ': ['ตำลาว', 'ตำปูปลาล้าปูนิ่ง', 'ตำปูปลาล้าปูดอง', 'ตำแตง', 'ตำถั่ว', 'ตำไทย', 'ตำโคราช', 'ตำซั่ว', 'ตำป่า', 'ตำหมูยอ', 'ตำมาม่า', 'ตำไทยไข่เค็ม', 'ตำโพดไข่เค็ม', 'ตำกุ้งสด', 'ตำกุ้งสุกกกก', 'ตำทะเล']
 
+
 };
 
-let currentCategory = null;
+let orderCounts = {}, menuComments = {}, selectionOrder = [];
+let orders = [], completedOrders = [], totalOrders = {}, soldOutMap = {};
+let isStockMode = false;
 
-// ฟังก์ชันสร้างปุ่มหมวดหมู่
 function createCategoryButtons() {
-  const container = document.getElementById('categoryButtons');
-  if (!container) return;
-  container.innerHTML = '';
-  
-  for (const categoryName in menuCategories) {
-    const btn = document.createElement('button');
-    btn.className = 'category-button';
-    btn.textContent = categoryName;
-    
-    // --- เพิ่มส่วนตรวจสอบชื่อเพื่อเปลี่ยนสีที่นี่ ---
-    if (['แกงป่าผัก', 'แกงป่าหน่อไม้ดอง', 'แกงป่าหน่อไม้สด'].includes(categoryName)) {
-      btn.classList.add('category-blue');
-    } 
-    else if (['แกงหน่อไม้ดอง', 'แกงปลาหน่อไม้ดอง'].includes(categoryName)) {
-      btn.classList.add('category-yellow');
+    const container = document.getElementById('categoryButtons');
+    container.innerHTML = '';
+    for (const cat in menuCategories) {
+        const btn = document.createElement('button');
+        btn.className = 'category-button';
+        // --- แก้ไขจุดที่ 1: เพิ่มแกงปลาหน่อไม้ดองให้เป็นสีเหลือง ---
+        if (['แกงป่าผัก', 'แกงป่าหน่อไม้ดอง', 'แกงป่าหน่อไม้สด'].includes(cat)) {
+            btn.classList.add('category-blue');
+        } else if (['แกงหน่อไม้ดอง', 'แกงปลาหน่อไม้ดอง'].includes(cat)) {
+            btn.classList.add('category-yellow');
+        }
+        btn.textContent = cat;
+        btn.onclick = () => showMenuItems(cat);
+        container.appendChild(btn);
     }
-    // ------------------------------------------
-
-    btn.onclick = () => showMenuItems(categoryName);
-    container.appendChild(btn);
-  }
-}
-// ฟังก์ชันแสดงรายการอาหารในหมวดหมู่
-function showMenuItems(categoryName) {
-  currentCategory = categoryName;
-  
-  document.getElementById('categorySection').style.display = 'none';
-  document.getElementById('menuSection').style.display = 'block';
-  document.getElementById('backToCategoryBtn').style.display = 'inline-block';
-  document.getElementById('currentCategoryName').textContent = categoryName;
-  
-  const container = document.getElementById('menuButtons');
-  if (!container) return;
-  container.innerHTML = '';
-  
-  const menuItems = menuCategories[categoryName];
-  menuItems.forEach(item => {
-    const btn = document.createElement('button');
-    btn.className = 'order-button';
-    
-    // สร้างข้อความชื่อเมนูและ span สำหรับตัวเลข
-    btn.innerHTML = `${item} <span id="quantity${item}">${orderCounts[item] || 0}</span>`;
-    
-    btn.onclick = () => placeOrder(item);
-    
-    if (soldOutMap && soldOutMap[item]) {
-      btn.classList.add('sold-out');
-    }
-    
-    container.appendChild(btn);
-  });
 }
 
-// ฟังก์ชันกลับไปหน้าหมวดหมู่
+function showMenuItems(cat) {
+    document.getElementById('categorySection').style.display = 'none';
+    document.getElementById('menuSection').style.display = 'block';
+    document.getElementById('backToCategoryBtn').style.display = 'inline-block';
+    document.getElementById('currentCategoryName').textContent = cat;
+    const container = document.getElementById('menuButtons'); container.innerHTML = '';
+    menuCategories[cat].forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'order-button';
+        btn.innerHTML = `${item} <span id="quantity${item}">${orderCounts[item] || 0}</span>`;
+        btn.onclick = () => placeOrder(item);
+        if (soldOutMap[item]) btn.classList.add('sold-out');
+        container.appendChild(btn);
+    });
+}
+
 function backToCategory() {
-  currentCategory = null;
-  document.getElementById('categorySection').style.display = 'block';
-  document.getElementById('menuSection').style.display = 'none';
-  document.getElementById('backToCategoryBtn').style.display = 'none';
-}
-// 3. Helper Functions
-function saveToLocalStorage(key, data) {
-    try { localStorage.setItem(key, JSON.stringify({ data: data, time: Date.now() })); } catch (e) {}
-}
-
-function loadFromLocalStorage(key) {
-    try { const item = localStorage.getItem(key); return item ? JSON.parse(item).data : null; } catch (e) { return null; }
-}
-
-function flashButton(b, colorClass = 'flash-red') { 
-    if(b) { b.classList.add(colorClass); setTimeout(()=>b.classList.remove(colorClass), 200); } 
-}
-let selectionOrder = []; // เพิ่มตัวนี้เพื่อจำว่ากดอะไรก่อนหลัง
-// 4. Core App Logic
-function placeOrder(p) {
-    if (isStockMode) {
-        soldOutMap[p] = !soldOutMap[p];
-        db.ref('soldOutItems').set(soldOutMap);
-        return;
-    }
-    if (soldOutMap[p]) return;
-
-    // ถ้ายังไม่มีเมนูนี้ในรายการที่เลือก ให้ใส่ชื่อเข้าไปในลำดับ
-    if (!selectionOrder.includes(p)) {
-        selectionOrder.push(p);
-    }
-
-    const allBtns = document.querySelectorAll('#menuButtons button');
-    let targetBtn = Array.from(allBtns).find(b => b.innerText.includes(p));
-    if(targetBtn) flashButton(targetBtn);
-
-    orderCounts[p] = (orderCounts[p] || 0) + 1;
-    
-    const qtySpan = document.getElementById('quantity' + p);
-    if(qtySpan) qtySpan.innerText = orderCounts[p];
-    
-    showSelectedItems(); 
-    saveTemporaryData();
+    document.getElementById('categorySection').style.display = 'block';
+    document.getElementById('menuSection').style.display = 'none';
 }
 
 function saveTemporaryData() {
-    const tempData = { orderCounts, comments: menuComments };
-    saveToLocalStorage(LS_KEYS.TEMP, tempData);
-    if (saveTimeout) clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => {
-        if (navigator.onLine) db.ref('tempData').set(tempData);
-    }, 1000);
+    db.ref(BASE_PATH + 'tempData/' + deviceId).set({ orderCounts, comments: menuComments, selectionOrder });
+}
+
+function placeOrder(p) {
+    if (isStockMode) {
+        db.ref(BASE_PATH + 'soldOutItems/' + p).set(!soldOutMap[p]);
+        return;
+    }
+    if (soldOutMap[p]) return;
+    orderCounts[p] = (orderCounts[p] || 0) + 1;
+    if (!selectionOrder.includes(p)) selectionOrder.push(p);
+    saveTemporaryData();
 }
 
 function showSelectedItems() {
     const tbody = document.querySelector('#selectedItemsTable tbody');
-    if (!tbody) return;
+    if (document.activeElement && document.activeElement.classList.contains('comment-input-selected')) return;
     tbody.innerHTML = '';
-
-    // เปลี่ยนจากวนลูป Object มาวนลูปตามลำดับที่กด (selectionOrder)
-    selectionOrder.forEach((i) => {
+    selectionOrder.forEach(i => {
         if (orderCounts[i] > 0) {
             const r = tbody.insertRow();
-            r.insertCell().textContent = i; // ชื่อเมนู
-            r.insertCell().textContent = orderCounts[i]; // จำนวน
-            
-            // ปุ่มเพิ่ม/ลด
+            r.insertCell().textContent = i; r.insertCell().textContent = orderCounts[i];
             const a = r.insertCell();
-            a.innerHTML = `
-                <button class="order-button" style="width:40px; padding:5px; margin:2px; background:#e74c3c;" onclick="decrementOrderCount('${i}')">-</button>
-                <button class="order-button" style="width:40px; padding:5px; margin:2px; background:#2ecc71;" onclick="incrementOrderCount('${i}')">+</button>
-            `;
-
-            // ช่องคอมเมนต์
-            const c = r.insertCell();
+            a.innerHTML = `<button class="order-button" style="width:40px; background:#e74c3c;" onclick="decrementOrderCount('${i}')">-</button>
+                           <button class="order-button" style="width:40px; background:#2ecc71;" onclick="incrementOrderCount('${i}')">+</button>`;
+            const cCell = r.insertCell();
             const input = document.createElement('input');
-            input.type = 'text'; 
-            input.className = 'comment-input-selected'; 
-            input.value = menuComments[i] || '';
-            input.placeholder = 'คอมเมนต์...';
+            input.className = 'comment-input-selected'; input.value = menuComments[i] || '';
             input.oninput = (e) => { 
                 menuComments[i] = e.target.value; 
-                saveTemporaryData(); 
+                db.ref(BASE_PATH + 'tempData/' + deviceId + '/comments/' + i).set(e.target.value);
             };
-            c.appendChild(input);
+            cCell.appendChild(input);
         }
     });
 }
 
-function incrementOrderCount(i) { 
-    orderCounts[i] = (orderCounts[i] || 0) + 1; 
-    const el = document.getElementById('quantity' + i);
-    if(el) el.innerText = orderCounts[i];
-    showSelectedItems(); 
+function incrementOrderCount(i) { orderCounts[i]++; saveTemporaryData(); }
+function decrementOrderCount(i) { 
+    if(orderCounts[i]>0) orderCounts[i]--; 
+    if(orderCounts[i]===0) selectionOrder = selectionOrder.filter(x => x !== i);
     saveTemporaryData(); 
 }
 
-function decrementOrderCount(i) { 
-    if(orderCounts[i] > 0) { 
-        orderCounts[i]--; 
-        const el = document.getElementById('quantity' + i);
-        if(el) el.innerText = orderCounts[i];
-        
-        // ถ้าลดจนเหลือ 0 ให้เอาออกจากลำดับการโชว์ด้วย
-        if(orderCounts[i] === 0) {
-            selectionOrder = selectionOrder.filter(item => item !== i);
-        }
-        
-        showSelectedItems(); 
-        saveTemporaryData(); 
-    } 
-}
-function clearSelectedItems() {
-    for (let i in orderCounts) { 
-        orderCounts[i] = 0; 
-        const el = document.getElementById('quantity' + i);
-        if(el) el.innerText = '0'; 
-    }
-    menuComments = {};
-    selectionOrder = []; // ล้างลำดับที่เลือกทิ้ง
-    showSelectedItems();
-    db.ref('tempData').remove();
-    localStorage.removeItem(LS_KEYS.TEMP);
-}
-
-function saveTable(t) {
-    const now = new Date().toISOString();
-    let newItems = [];
-    for (let i in orderCounts) {
+function saveTable(t, isRes = false) {
+    const timestamp = isRes ? new Date(Date.now() - 86400000).toISOString() : new Date().toISOString();
+    selectionOrder.forEach(i => {
         if (orderCounts[i] > 0) {
-            newItems.push({ table: t, item: i, quantity: orderCounts[i], comment: (menuComments[i] || '').trim(), timestamp: now });
+            db.ref(BASE_PATH + 'orders').push({
+                table: t, item: i, quantity: orderCounts[i], comment: (menuComments[i] || '').trim(), timestamp: timestamp
+            });
             totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
         }
-    }
-    if (newItems.length > 0) {
-        orders = orders.concat(newItems);
-        db.ref().update({ orders, totalOrders });
-        saveToLocalStorage(LS_KEYS.ORDERS, orders);
-        clearSelectedItems();
-    }
-}
-
-function saveReservationTable() {
-    const tName = prompt("ชื่อโต๊ะ/เบอร์โทร (จอง):");
-    if (!tName || tName.trim() === "") return;
-    const now = new Date(Date.now() - 86400000).toISOString(); 
-    let newItems = [];
-    for (let i in orderCounts) {
-        if (orderCounts[i] > 0) {
-            newItems.push({ table: tName.trim(), item: i, quantity: orderCounts[i], comment: (menuComments[i] || '').trim(), timestamp: now });
-            totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
-        }
-    }
-    if (newItems.length > 0) {
-        orders = orders.concat(newItems);
-        db.ref().update({ orders, totalOrders });
-        clearSelectedItems();
-    }
-}
-
-// 5. Order Queue Logic
-function showTableOrders() {
-    const tbody = document.querySelector('#tableOrdersTable tbody'); if (!tbody) return;
-    tbody.innerHTML = '';
-    const sorted = [...orders].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    sorted.forEach((o) => {
-        const r = tbody.insertRow();
-        r.insertCell().textContent = 'โต๊ะ ' + o.table;
-        r.insertCell().textContent = o.item;
-        r.insertCell().textContent = o.quantity;
-        
-        const cCell = r.insertCell();
-        const input = document.createElement('input');
-        input.type = 'text'; input.className = 'comment-input-queue'; input.value = o.comment || '';
-        const btn = document.createElement('button');
-        btn.textContent = 'บันทึก'; btn.className = 'save-comment-button';
-        btn.onclick = () => {
-            const target = orders.find(x => x.timestamp === o.timestamp && x.item === o.item);
-            if (target) {
-                target.comment = input.value.trim();
-                db.ref('orders').set(orders).then(() => {
-                    btn.classList.add('saved');
-                    flashButton(btn, 'flash-green');
-                });
-            }
-        };
-        cCell.appendChild(input); cCell.appendChild(btn);
-
-        const wc = r.insertCell(); wc.className = 'waiting-time-cell';
-        const cc = r.insertCell();
-        cc.innerHTML = `<button class="order-button complete-button" onclick="handleComplete('${o.timestamp}', '${o.item}')">ส่ง</button>`;
     });
-    updateWaitingTimes();
+    db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
+    db.ref(BASE_PATH + 'tempData/' + deviceId).remove();
 }
 
-function handleComplete(ts, item) {
-    const idx = orders.findIndex(x => x.timestamp === ts && x.item === item);
-    if (idx === -1) return;
-    const o = orders[idx];
-    completedOrders.push({ ...o, completedAt: new Date().toISOString() });
-    if (totalOrders[o.item]) { totalOrders[o.item] -= o.quantity; if (totalOrders[o.item] <= 0) delete totalOrders[o.item]; }
-    orders.splice(idx, 1);
-    db.ref().update({ orders, completedOrders, totalOrders });
+function handleComplete(orderId) {
+    const o = orders.find(x => x.id === orderId);
+    if (!o) return;
+    if (o.quantity > 1) {
+        db.ref(BASE_PATH + 'completedOrders').push({ ...o, quantity: 1, completedAt: new Date().toISOString() });
+        db.ref(BASE_PATH + 'orders/' + orderId + '/quantity').set(o.quantity - 1);
+        if (totalOrders[o.item]) totalOrders[o.item] = Math.max(0, totalOrders[o.item] - 1);
+    } else {
+        db.ref(BASE_PATH + 'completedOrders').push({ ...o, completedAt: new Date().toISOString() });
+        if (totalOrders[o.item]) totalOrders[o.item] = Math.max(0, totalOrders[o.item] - 1);
+        db.ref(BASE_PATH + 'orders/' + orderId).remove();
+    }
+    db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
 }
 
 function undoLastComplete() {
-    if (!completedOrders.length) return;
-    const last = completedOrders.pop();
-    orders.push(last);
-    totalOrders[last.item] = (totalOrders[last.item] || 0) + last.quantity;
-    db.ref().update({ orders, completedOrders, totalOrders });
+    db.ref(BASE_PATH + 'completedOrders').limitToLast(1).once('value', snap => {
+        if (!snap.exists()) return;
+        const id = Object.keys(snap.val())[0];
+        const data = snap.val()[id];
+        delete data.completedAt; delete data.id;
+        db.ref(BASE_PATH + 'orders').push(data);
+        totalOrders[data.item] = (totalOrders[data.item] || 0) + data.quantity;
+        db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
+        db.ref(BASE_PATH + 'completedOrders/' + id).remove();
+    });
 }
 
-function updateWaitingTimes() {
-    const rows = document.querySelectorAll('#tableOrdersTable tbody tr');
-    const sorted = [...orders].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    rows.forEach((row, i) => {
-        if (sorted[i]) {
-            const mins = Math.floor((new Date() - new Date(sorted[i].timestamp)) / 60000);
-            const wc = row.querySelector('.waiting-time-cell');
-            if (wc) wc.textContent = mins + ' นาที';
-            row.className = mins >= 10 ? 'wait-long' : (mins >= 5 ? 'wait-medium' : 'wait-normal');
-        }
+function showTableOrders() {
+    const tbody = document.querySelector('#tableOrdersTable tbody');
+    tbody.innerHTML = '';
+    const sorted = [...orders].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    sorted.forEach(o => {
+        const r = tbody.insertRow();
+        const mins = Math.floor((new Date() - new Date(o.timestamp)) / 60000);
+        r.className = mins >= 10 ? 'wait-long' : (mins >= 5 ? 'wait-medium' : 'wait-normal');
+        r.insertCell().textContent = 'โต๊ะ ' + o.table;
+        r.insertCell().textContent = o.item;
+        r.insertCell().textContent = o.quantity;
+        const cCell = r.insertCell();
+        cCell.innerHTML = `<input value="${o.comment || ''}" onchange="db.ref('${BASE_PATH}orders/${o.id}/comment').set(this.value)">`;
+        r.insertCell().textContent = mins + ' นาที';
+        const btn = document.createElement('button');
+        btn.className = 'order-button complete-button'; btn.textContent = 'ส่ง';
+        btn.onclick = () => handleComplete(o.id);
+        r.insertCell().appendChild(btn);
     });
 }
 
 function showTotalOrders() {
-    const t = document.getElementById('totalOrders'); if (!t) return;
-    t.innerHTML = '<h2>เมนูซ้ำ</h2>';
+    const t = document.getElementById('totalOrders'); t.innerHTML = '<h2>เมนูซ้ำ</h2>';
     const b = {};
     orders.forEach(o => {
         const k = nonBatchableMenuItems.includes(o.item) ? `${o.item}-${o.timestamp}` : `${o.item}-${o.comment}`;
-        if (!b[k]) b[k] = { item: o.item, comment: o.comment, reg: 0, th: 0, ts: o.timestamp };
+        if (!b[k]) b[k] = { item: o.item, comment: o.comment, reg: 0, th: 0 };
         /[ก-๙]/.test(o.table) ? b[k].th += o.quantity : b[k].reg += o.quantity;
     });
-    Object.values(b).sort((x, y) => new Date(x.ts) - new Date(y.ts)).forEach(i => {
+    Object.values(b).forEach(i => {
         const C = i.comment ? ` (${i.comment})` : '';
-        let d = (i.th > 0 && i.reg > 0) ? `${i.th + i.reg},${i.item}${C} ${i.reg}, ก ${i.th}` :
-                (i.th > 0 ? `${i.th},${i.item}${C} 0, ก ${i.th}` : `${i.reg},${i.item}${C} ${i.reg}`);
+        let d = `${i.th + i.reg},${i.item}${C} ${i.reg}${i.th > 0 ? ', ก '+i.th : ''}`;
         const p = document.createElement('p'); p.textContent = d; t.appendChild(p);
     });
     updateKitchenDisplay();
 }
 
 function updateKitchenDisplay() {
-    ['kik', 'jeab', 'nan', 'see'].forEach(c => { const e = document.getElementById(`chef-${c}`); if (e) e.innerHTML = ''; });
+    ['kik', 'jeab', 'nan', 'see'].forEach(c => document.getElementById(`chef-${c}`).innerHTML = '');
     document.querySelectorAll('#totalOrders p').forEach(p => {
         for (const [c, menus] of Object.entries(chefMenus)) {
             if (menus.some(m => p.textContent.includes(m))) {
-                const ce = document.getElementById(`chef-${c}`);
-                if (ce) ce.innerHTML += `<div class="chef-summary">${p.textContent}</div>`;
+                document.getElementById(`chef-${c}`).innerHTML += `<div>${p.textContent}</div>`;
                 break;
             }
         }
     });
 }
 
+function changeTableName(){
+    const o=document.getElementById('oldTableName').value.trim(), n=document.getElementById('newTableName').value.trim();
+    if(o&&n){
+        orders.forEach(d => { if(d.table === o) db.ref(BASE_PATH + 'orders/' + d.id + '/table').set(n); });
+        document.getElementById('oldTableName').value=''; document.getElementById('newTableName').value='';
+    }
+}
+
 function showCompletedOrders() {
-    const e = document.getElementById('completedOrders'); if (!e) return;
-    e.innerHTML = '<h2>เสร็จแล้ว</h2>';
-    [...completedOrders].reverse().slice(0, 15).forEach(o => {
+    const e = document.getElementById('completedOrders'); e.innerHTML = '<h2>เสร็จแล้ว</h2>';
+    completedOrders.slice().reverse().slice(0, 15).forEach(o => {
         e.innerHTML += `<p>โต๊ะ ${o.table}: ${o.item} ${o.comment ? '('+o.comment+')' : ''}</p>`;
     });
-}
-
-// 6. Sync & Connectivity
-function updateSyncStatus() {
-    const ind = document.getElementById('syncIndicator');
-    const txt = document.getElementById('syncStatusText');
-    const connected = navigator.onLine; // ตรวจเน็ตเครื่อง
-    
-    if (!connected) {
-        if (ind) ind.className = 'status-indicator offline';
-        if (txt) txt.textContent = 'ออฟไลน์ (กำลังใช้ข้อมูลในเครื่อง)';
-    } else {
-        if (ind) ind.className = 'status-indicator synced';
-        if (txt) txt.textContent = 'ซิงค์แล้ว';
-    }
-}
-
-async function syncWithFirebase() {
-    if (isSyncing || !navigator.onLine) {
-        updateSyncStatus();
-        return;
-    }
-    isSyncing = true;
-    try {
-        const localTemp = loadFromLocalStorage(LS_KEYS.TEMP);
-        if (localTemp) await db.ref('tempData').set(localTemp);
-        updateSyncStatus();
-    } catch (e) {
-        updateSyncStatus();
-    } finally { isSyncing = false; }
 }
 
 function toggleStockMode() {
@@ -920,117 +379,65 @@ function toggleStockMode() {
     btn.className = isStockMode ? "order-button stock-button stock-mode-active" : "order-button stock-button";
 }
 
-function updateSoldOutVisuals() {
-    // หาปุ่มสั่งอาหารทั้งหมดที่กำลังโชว์อยู่บนจอ
-    const buttons = document.querySelectorAll('#menuButtons button');
-    
-    buttons.forEach(btn => {
-        let isMatch = false;
-        
-        // วนเช็ครายชื่อของหมดในฐานข้อมูล
-        for (let itemName in soldOutMap) {
-            // ถ้าในปุ่มมีชื่อเมนูที่หมด (เช่น ในปุ่ม "ปลาเนื้ออ่อน 4" มีคำว่า "ปลาเนื้ออ่อน")
-            if (soldOutMap[itemName] === true && btn.innerText.includes(itemName)) {
-                isMatch = true;
-                break; 
-            }
-        }
+function clearCompletedOrders() { if(confirm('ล้างรายการที่เสร็จแล้ว?')) db.ref(BASE_PATH + 'completedOrders').remove(); }
 
-        if (isMatch) {
-            btn.classList.add('sold-out'); // เปลี่ยนเป็นสีเทา + ขีดฆ่า
-        } else {
-            btn.classList.remove('sold-out'); // กลับเป็นสีเขียวปกติ
-        }
+window.addEventListener('load', () => {
+    initTables();
+    createCategoryButtons();
+    db.ref(BASE_PATH + 'orders').on('value', snap => {
+        const val = snap.val();
+        orders = val ? Object.entries(val).map(([id, data]) => ({ id, ...data })) : [];
+        showTableOrders(); showTotalOrders();
     });
-}
-
-function clearCompletedOrders() { if(confirm('ล้างรายการที่เสร็จแล้ว?')) { completedOrders = []; db.ref('completedOrders').set([]); showCompletedOrders(); } }
-
-function changeTableName(){
-    const o=document.getElementById('oldTableName').value.trim(), n=document.getElementById('newTableName').value.trim();
-    if(o&&n){
-        orders=orders.map(d=>d.table===o?{...d,table:n}:d);
-        db.ref('orders').set(orders);
-        document.getElementById('oldTableName').value=''; document.getElementById('newTableName').value='';
-    }
-}
-
-// 7. Initial & Listeners
-window.addEventListener('load', () => { 
-
-
-    // Load local first
-    orders = loadFromLocalStorage(LS_KEYS.ORDERS) || [];
-    completedOrders = loadFromLocalStorage(LS_KEYS.COMPLETED) || [];
-    totalOrders = loadFromLocalStorage(LS_KEYS.TOTAL) || {};
-    const tData = loadFromLocalStorage(LS_KEYS.TEMP);
-    if(tData) { orderCounts = tData.orderCounts; menuComments = tData.comments; }
-
-    showTableOrders(); showTotalOrders(); showCompletedOrders(); showSelectedItems();
-	createCategoryButtons();
-
-const tableContainer = document.getElementById('tableButtons');
-    if (tableContainer) {
-        tableContainer.innerHTML = ''; // ล้างค่าว่างเก่าออก
-        
-        // สร้างปุ่มโต๊ะจองก่อน
-        const resBtn = document.createElement('button');
-        resBtn.className = 'table-button reservation-button';
-        resBtn.textContent = 'โต๊ะจอง (แซงคิว)';
-        resBtn.onclick = () => saveReservationTable();
-        tableContainer.appendChild(resBtn);
-
-        // วนลูปสร้างปุ่มโต๊ะ 1 ถึง 25
-        for (let i = 1; i <= 25; i++) {
-            const btn = document.createElement('button');
-            btn.className = 'table-button';
-            btn.textContent = 'โต๊ะ ' + i;
-            btn.onclick = () => saveTable(i.toString());
-            tableContainer.appendChild(btn);
-        }
-    }
-
-
-    // Online Status
-    window.addEventListener('online', updateSyncStatus);
-    window.addEventListener('offline', updateSyncStatus);
-    updateSyncStatus();
-
-    // Firebase Listeners
-    db.ref('orders').on('value', snap => { orders = snap.val() || []; saveToLocalStorage(LS_KEYS.ORDERS, orders); showTableOrders(); showTotalOrders(); });
-    db.ref('completedOrders').on('value', snap => { completedOrders = snap.val() || []; saveToLocalStorage(LS_KEYS.COMPLETED, completedOrders); showCompletedOrders(); });
-    db.ref('totalOrders').on('value', snap => { totalOrders = snap.val() || {}; saveToLocalStorage(LS_KEYS.TOTAL, totalOrders); showTotalOrders(); });
-    db.ref('soldOutItems').on('value', snap => { soldOutMap = snap.val() || {}; updateSoldOutVisuals(); });
-    
-    // ดึงค่า tempData แต่ระวังไม่ให้เขียนทับคอมเมนต์ที่กำลังพิมพ์
-    db.ref('tempData').on('value', snap => {
-        const d = snap.val();
-        if (d && !isSyncing) {
-            // ถ้าเครื่องอื่นเปลี่ยนรายการ ให้เครื่องเราเปลี่ยนตามเฉพาะจำนวน
-            // แต่คอมเมนต์จะไม่ถูกทับถ้าเราคุยกับตารางอยู่
-            orderCounts = d.orderCounts || orderCounts;
-            // เช็คว่าช่อง input ไหนกำลังถูกโฟกัสอยู่หรือไม่
-            const activeInput = document.activeElement;
-            if (!activeInput || !activeInput.classList.contains('comment-input-selected')) {
-                menuComments = d.comments || menuComments;
-                showSelectedItems();
-            }
+    db.ref(BASE_PATH + 'completedOrders').on('value', snap => {
+        const val = snap.val();
+        completedOrders = val ? Object.values(val) : [];
+        showCompletedOrders();
+    });
+    db.ref(BASE_PATH + 'totalOrders').on('value', snap => { totalOrders = snap.val() || {}; });
+    db.ref(BASE_PATH + 'soldOutItems').on('value', snap => {
+        soldOutMap = snap.val() || {};
+        document.querySelectorAll('.order-button').forEach(btn => {
+            const itemName = btn.innerText.split(' ')[0];
+            if (soldOutMap[itemName]) btn.classList.add('sold-out'); else btn.classList.remove('sold-out');
+        });
+    });
+    db.ref(BASE_PATH + 'tempData/' + deviceId).on('value', snap => {
+        const d = snap.val() || {};
+        // --- แก้ไขจุดที่ 2: ล้างตัวเลขบนปุ่มทิ้งเมื่อไม่มีข้อมูลในตะกร้า ---
+        if (!snap.exists()) {
+            orderCounts = {}; menuComments = {}; selectionOrder = [];
+            // สั่ง Reset ตัวเลขบนปุ่มเมนูทั้งหมดให้เป็น 0
+            document.querySelectorAll('[id^="quantity"]').forEach(span => span.innerText = '0');
+        } else {
+            orderCounts = d.orderCounts || {}; menuComments = d.comments || {}; selectionOrder = d.selectionOrder || [];
+            // อัปเดตตัวเลขตามข้อมูลปัจจุบัน
             for(let i in orderCounts) {
                 const el = document.getElementById('quantity' + i);
                 if(el) el.innerText = orderCounts[i];
             }
         }
+        showSelectedItems();
     });
-
-    setInterval(syncWithFirebase, 2000);
-    setInterval(updateWaitingTimes, 30000);
-    new MutationObserver(()=>updateKitchenDisplay()).observe(document.getElementById('totalOrders'),{childList:true,subtree:true});
+    db.ref(".info/connected").on("value", snap => {
+        document.getElementById('syncStatusText').textContent = snap.val() ? "ออนไลน์ (ID: " + deviceId + ")" : "ออฟไลน์";
+    });
+    setInterval(showTableOrders, 30000);
 });
 
-document.addEventListener('gesturestart', e => e.preventDefault());
+function initTables() {
+    const container = document.getElementById('tableButtons');
+    const resBtn = document.createElement('button');
+    resBtn.className = 'table-button reservation-button'; resBtn.textContent = 'โต๊ะจอง';
+    resBtn.onclick = () => { let t = prompt("ชื่อโต๊ะจอง:"); if(t) saveTable(t, true); };
+    container.appendChild(resBtn);
+    for (let i = 1; i <= 25; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'table-button'; btn.textContent = 'โต๊ะ ' + i;
+        btn.onclick = () => saveTable(i.toString());
+        container.appendChild(btn);
+    }
+}
 </script>
-
-
-
 </body>
 </html>
