@@ -197,6 +197,7 @@ const menuCategories = {
   
   'อื่นๆ': ['ขาหมู', 'ผัดฉ่าขาหมู', 'หมูปลาร้า', 'หมูน้ำปลา', 'ไก่ปลาร้า', 'ไก่น้ำปลา', 'ข้าว', 'ขนม', 'หงษ์ทอง', 'สามชั้นใบยี่หร่า', 'เมนูพิเศษ', 'ของแถม'],
   
+  
   'เมนูพิเศษ': ['หมกหม้อ', 'ขี้เหล็ก', 'ต้มจืด', 'ทอดมัน', 'หมกปลานิล', 'ไก่หลงทาง'],
   
   'ส้มตำ': ['ตำลาว', 'ตำปูปลาล้าปูนิ่ง', 'ตำปูปลาล้าปูดอง', 'ตำแตง', 'ตำถั่ว', 'ตำไทย', 'ตำโคราช', 'ตำซั่ว', 'ตำป่า', 'ตำหมูยอ', 'ตำมาม่า', 'ตำไทยไข่เค็ม', 'ตำโพดไข่เค็ม', 'ตำกุ้งสด', 'ตำกุ้งสุกกกก', 'ตำทะเล']
@@ -211,10 +212,20 @@ let isStockMode = false;
 function createCategoryButtons() {
     const container = document.getElementById('categoryButtons');
     container.innerHTML = '';
+
+    // --- ส่วนที่เพิ่มใหม่: ปุ่มขาหมูแบบสั่งทันที ---
+    const fastBtn = document.createElement('button');
+    fastBtn.className = 'category-button';
+    // ตั้งค่าสีแดงเพื่อให้ต่างจากหมวดหมู่ปกติ
+    fastBtn.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)'; 
+    fastBtn.innerHTML = `ขาหมู <span id="quantityขาหมู">${orderCounts['ขาหมู'] || 0}</span>`;
+    fastBtn.onclick = () => placeOrder('ขาหมู'); // กดแล้วสั่งทันที
+    container.appendChild(fastBtn);
+    // -----------------------------------------
+
     for (const cat in menuCategories) {
         const btn = document.createElement('button');
         btn.className = 'category-button';
-        // --- แก้ไขจุดที่ 1: เพิ่มแกงปลาหน่อไม้ดองให้เป็นสีเหลือง ---
         if (['แกงป่าผัก', 'แกงป่าหน่อไม้ดอง', 'แกงป่าหน่อไม้สด'].includes(cat)) {
             btn.classList.add('category-blue');
         } else if (['แกงหน่อไม้ดอง', 'แกงปลาหน่อไม้ดอง'].includes(cat)) {
