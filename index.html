@@ -882,7 +882,37 @@ function showTableOrders() {
         }
         // --------------------------------------
 
-        r.insertCell().textContent = 'โต๊ะ ' + o.table;
+        // --- คลิกชื่อโต๊ะเพื่อแก้ไขได้ทันที ---
+        const tableCell = r.insertCell();
+        const tableLabel = document.createElement('span');
+        tableLabel.textContent = 'โต๊ะ ' + o.table;
+        tableLabel.style.cssText = 'cursor:pointer; padding:4px 8px; border-radius:6px; display:inline-block; border:2px dashed transparent; transition:all 0.2s;';
+        tableLabel.title = 'แตะ 2 ครั้งเพื่อเปลี่ยนชื่อโต๊ะ';
+        tableLabel.onmouseover = () => tableLabel.style.borderColor = '#8e44ad';
+        tableLabel.onmouseout = () => tableLabel.style.borderColor = 'transparent';
+        tableLabel.ondblclick = () => {
+            const currentTable = o.table;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentTable;
+            input.style.cssText = 'width:70px; font-size:20px; padding:4px 6px; border:2px solid #8e44ad; border-radius:6px; text-align:center;';
+            tableCell.innerHTML = '';
+            tableCell.appendChild(input);
+            input.focus();
+            input.select();
+            const doRename = () => {
+                const newTable = input.value.trim();
+                if (newTable && newTable !== currentTable) {
+                    orders.forEach(d => {
+                        if (d.table === currentTable) db.ref(BASE_PATH + 'orders/' + d.id + '/table').set(newTable);
+                    });
+                }
+            };
+            input.onblur = doRename;
+            input.onkeydown = (e) => { if (e.key === 'Enter') { doRename(); input.blur(); } if (e.key === 'Escape') input.blur(); };
+        };
+        tableCell.appendChild(tableLabel);
+        // -----------------------------------------
         
         // ใส่ชื่อเมนู (ถ้าเสร็จแล้วให้ขีดฆ่า)
         const itemCell = r.insertCell();
