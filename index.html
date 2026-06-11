@@ -145,7 +145,20 @@
 
 <div id="syncStatusBar">
   <span id="syncStatusText">เชื่อมต่อแล้ว</span>
+  <span id="staffBadge"></span>
 </div>
+
+<!-- ================= Staff Name Popup ================= -->
+<div id="staffNameOverlay">
+  <div id="staffNameBox">
+    <div style="font-size:28px; margin-bottom:6px;">👤</div>
+    <div style="font-size:20px; font-weight:bold; color:#2c3e50;">ยินดีต้อนรับ!</div>
+    <div style="font-size:15px; color:#7f8c8d; margin-top:6px;">กรุณาพิมพ์ชื่อของคุณเพื่อเริ่มรับออเดอร์</div>
+    <input type="text" id="staffNameInput" placeholder="ชื่อพนักงาน" autocomplete="off" maxlength="20">
+    <button id="staffNameConfirmBtn" onclick="confirmStaffName()">✅ เริ่มงาน</button>
+  </div>
+</div>
+<!-- ================= จบ Staff Name Popup ================= -->
 
 <!-- ================= ส่วนระบบเรียกเก็บเงิน (Check Bill) ================= -->
 <div id="billingSystemContainer">
@@ -220,6 +233,423 @@
   <button class="order-button undo-button" onclick="undoLastComplete()">เรียกคืนรายการล่าสุด</button>
 </div>
 
+<!-- ปุ่มเจ้าของ (ซ่อนไว้ดูเบาๆ) -->
+<div style="margin-top: 30px; padding: 10px; text-align: right;">
+  <button onclick="openOwnerPIN('menu')" style="background:none; border:1px solid #ccc; color:#bbb; font-size:12px; padding:6px 12px; border-radius:6px; cursor:pointer;">⚙️ ตั้งค่าระบบ</button>
+</div>
+
+<!-- Modal สรุปยอดรายวัน (v5) -->
+<div id="dailySummaryModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); z-index:2000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="background:#f8f9fa; max-width:780px; margin:20px auto 40px; border-radius:16px; padding:0; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.25); overflow:hidden;">
+    
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e); padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">📊 สรุปยอดรายวัน</div>
+        <div style="color:rgba(255,255,255,0.6); font-size:13px; margin-top:3px;">วิเคราะห์ยอดขายและเมนูยอดนิยม</div>
+      </div>
+      <button onclick="closeDailySummary()" style="background:rgba(255,255,255,0.15); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Tab Mode Selector -->
+    <div style="background:white; padding:14px 20px; border-bottom:1px solid #e9ecef; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="tabDay"   onclick="setSummaryMode('day')"   class="summary-tab summary-tab-active">📅 รายวัน</button>
+      <button id="tabWeek"  onclick="setSummaryMode('week')"  class="summary-tab">📆 สัปดาห์นี้</button>
+      <button id="tabMonth" onclick="setSummaryMode('month')" class="summary-tab">🗓️ เดือนนี้</button>
+      <button id="tabRange" onclick="setSummaryMode('range')" class="summary-tab">🔍 กำหนดเอง</button>
+    </div>
+
+    <!-- Date Controls -->
+    <div id="summaryDateControl" style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef;">
+      <!-- Day mode -->
+      <div id="ctrlDay" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">เลือกวัน:</label>
+        <input type="date" id="summaryDatePicker" style="font-size:16px; padding:7px 12px; border:2px solid #2980b9; border-radius:8px;" onchange="runSummaryLoad()">
+        <button onclick="setTodayAndLoad()" style="background:#2980b9; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">วันนี้</button>
+        <!-- ปุ่มย้อนหน้า -->
+        <button onclick="shiftDay(-1)" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;" title="วันก่อนหน้า">◀</button>
+        <button onclick="shiftDay(1)"  style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;" title="วันถัดไป">▶</button>
+      </div>
+      <!-- Range mode -->
+      <div id="ctrlRange" style="display:none; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ตั้งแต่:</label>
+        <input type="date" id="rangeStart" style="font-size:16px; padding:7px 12px; border:2px solid #8e44ad; border-radius:8px;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ถึง:</label>
+        <input type="date" id="rangeEnd"   style="font-size:16px; padding:7px 12px; border:2px solid #8e44ad; border-radius:8px;">
+        <button onclick="runSummaryLoad()" style="background:#8e44ad; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">ดูข้อมูล</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="summaryContent" style="padding:20px;">
+      <p style="color:#888; font-size:16px; text-align:center; padding:30px 0;">เลือกช่วงเวลาที่ต้องการครับ</p>
+    </div>
+
+    <!-- Firebase Storage Info -->
+    <div style="background:white; padding:12px 20px; border-top:1px solid #e9ecef;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div style="font-size:13px; color:#888;">
+          💾 ข้อมูล Firebase: <span id="fbStorageNote" style="color:#e67e22; font-weight:600;">กำลังตรวจสอบ...</span>
+        </div>
+        <button onclick="archiveAndClean()" id="archiveBtn" style="background:#e74c3c; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:600; display:none;">
+          🗜️ บีบอัดข้อมูลเก่า (ประหยัดพื้นที่)
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.summary-tab {
+  background:#f1f3f5; border:2px solid transparent; padding:8px 16px; border-radius:20px;
+  font-size:15px; font-weight:600; cursor:pointer; color:#555; transition:all 0.2s;
+}
+.summary-tab:hover { background:#e9ecef; }
+.summary-tab-active { background:#2980b9 !important; color:white !important; border-color:#2980b9 !important; }
+.summary-stat-card {
+  border-radius:12px; padding:16px 20px; color:white; text-align:center; flex:1; min-width:130px;
+}
+.summary-stat-label { font-size:13px; opacity:0.85; margin-bottom:4px; }
+.summary-stat-value { font-size:26px; font-weight:bold; line-height:1; }
+.summary-stat-unit  { font-size:13px; opacity:0.85; margin-top:3px; }
+.summary-table { width:100%; border-collapse:collapse; font-size:16px; }
+.summary-table thead tr { background:#2c3e50; color:white; }
+.summary-table thead th { padding:11px 14px; text-align:left; font-weight:700; font-size:15px; }
+.summary-table thead th:nth-child(2) { text-align:center; }
+.summary-table tbody tr:nth-child(even) { background:#f8f9fa; }
+.summary-table tbody tr:nth-child(odd)  { background:white; }
+.summary-table tbody tr:hover { background:#e8f4fd; }
+.summary-table td { padding:11px 14px; font-size:16px; color:#2c3e50; border-bottom:1px solid #e9ecef; }
+.summary-table td:nth-child(2) { text-align:center; font-weight:700; font-size:18px; color:#2980b9; }
+.summary-bar-wrap { background:#e9ecef; border-radius:6px; height:22px; min-width:80px; overflow:hidden; }
+.summary-bar-fill  { height:100%; border-radius:6px; display:flex; align-items:center; padding-left:7px; font-size:13px; color:white; font-weight:700; transition:width 0.4s ease; }
+.summary-table tfoot td { padding:13px 14px; font-size:17px; font-weight:700; background:#2c3e50; color:white; }
+</style>
+
+
+<!-- ================= Modal จัดการเมนู (Admin) ================= -->
+<div id="menuManagerModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:3000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="background:#f8f9fa; max-width:820px; margin:20px auto 40px; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#e67e22,#f39c12); padding:18px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">🍽️ จัดการเมนู</div>
+        <div style="color:rgba(255,255,255,0.75); font-size:13px; margin-top:2px;">เพิ่ม/ลบ หมวดหมู่และเมนู — บันทึกใน Firebase ทันที</div>
+      </div>
+      <button onclick="closeMenuManager()" style="background:rgba(255,255,255,0.2); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button id="mmTabAdd"   onclick="mmSetTab('add')"   class="mm-tab">➕ เพิ่มเมนูใหม่</button>
+      <button id="mmTabChef"  onclick="mmSetTab('chef')"  class="mm-tab">👨‍🍳 มอบหมายแม่ครัว</button>
+      <button id="mmTabCats"  onclick="mmSetTab('cats')"  class="mm-tab">📂 หมวดหมู่</button>
+      <button id="mmTabMenus" onclick="mmSetTab('menus')" class="mm-tab">🍜 เมนูในหมวด</button>
+      <button id="mmTabNb"    onclick="mmSetTab('nb')"    class="mm-tab">🔀 สั่งแยก/รวม</button>
+      <div style="flex:1;"></div>
+      <span style="font-size:12px; color:#aaa;" id="mmSaveStatus"></span>
+    </div>
+
+    <!-- Tab: เพิ่มเมนูใหม่ -->
+    <div id="mmPanelAdd" style="padding:20px; display:none;">
+      <div class="field-group2">
+        <div class="field-label2">ชื่อเมนู *</div>
+        <input id="mmAddName" class="mm-adm-input" type="text" placeholder="เช่น คั่วไก่ใบมะกรูด" maxlength="40"
+          onkeydown="if(event.key==='Enter') document.getElementById('mmAddPrice').focus()">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="field-group2">
+          <div class="field-label2">ราคา (บาท)</div>
+          <input id="mmAddPrice" class="mm-adm-input" type="number" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field-group2">
+          <div class="field-label2">หมวดหมู่</div>
+          <select id="mmAddCat" class="mm-adm-select"></select>
+        </div>
+      </div>
+      <div class="field-group2">
+        <div class="field-label2">มอบหมายให้แม่ครัว (เลือกได้หลายคน)</div>
+        <div id="mmChefCheckboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:8px;"></div>
+      </div>
+      <div class="field-group2">
+        <div class="field-label2" style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="mmIsNonBatchable" style="width:16px;height:16px;">
+          <span>สั่งแยกรายการ (ไม่รวมกับโต๊ะอื่น) เช่น ไข่เจียว, ของเดี่ยว</span>
+        </div>
+      </div>
+      <button onclick="mmDoAddNewItem()" style="background:#e67e22; color:white; border:none; padding:12px 24px; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;">✅ เพิ่มเมนูนี้</button>
+      <p id="mmAddResult" style="text-align:center; margin-top:10px; font-size:15px; min-height:20px;"></p>
+    </div>
+
+    <!-- Tab: มอบหมายแม่ครัว -->
+    <div id="mmPanelChef" style="padding:20px; display:none;">
+      <p style="color:#888; font-size:14px; margin:0 0 14px;">กำหนด "คีย์เวิร์ด" ให้แต่ละแม่ครัว — เมนูที่มีคำนี้ในชื่อจะถูกส่งให้แม่ครัวคนนั้น</p>
+      <div id="mmChefCardsContainer"></div>
+    </div>
+
+    <!-- Tab: หมวดหมู่ -->
+    <div id="mmPanelCats" style="padding:20px;">
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <input id="mmNewCatInput" type="text" placeholder="ชื่อหมวดหมู่ใหม่..." maxlength="30"
+          style="flex:1; min-width:160px; font-size:16px; padding:9px 14px; border:2px solid #e67e22; border-radius:8px;"
+          onkeydown="if(event.key==='Enter') mmAddCategory()">
+        <button onclick="mmAddCategory()" style="background:#e67e22; color:white; border:none; padding:10px 20px; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">+ เพิ่มหมวด</button>
+      </div>
+      <div id="mmCatList" style="display:flex; flex-direction:column; gap:6px;"></div>
+    </div>
+
+    <!-- Tab: เมนูในหมวด -->
+    <div id="mmPanelMenus" style="padding:20px; display:none;">
+      <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:15px; font-weight:600; color:#555;">เลือกหมวด:</label>
+        <select id="mmCatSelect" onchange="mmRenderMenuList()" style="font-size:16px; padding:8px 12px; border:2px solid #e67e22; border-radius:8px; flex:1; min-width:160px;"></select>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <input id="mmNewMenuInput" type="text" placeholder="ชื่อเมนูใหม่..." maxlength="40"
+          style="flex:1; min-width:160px; font-size:16px; padding:9px 14px; border:2px solid #e67e22; border-radius:8px;"
+          onkeydown="if(event.key==='Enter') mmAddMenuItem()">
+        <button onclick="mmAddMenuItem()" style="background:#e67e22; color:white; border:none; padding:10px 20px; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">+ เพิ่มเมนู</button>
+      </div>
+      <div id="mmMenuList" style="display:flex; flex-direction:column; gap:5px;"></div>
+    </div>
+
+    <!-- Tab: สั่งแยก/รวม -->
+    <div id="mmPanelNb" style="padding:20px; display:none;">
+      <p style="color:#555; font-size:14px; margin:0 0 14px; line-height:1.6; background:#fff3e0; padding:10px 14px; border-radius:8px; border-left:4px solid #e67e22;">
+        <strong>🔴 สั่งแยก</strong> — ครัวเห็นแยกทีละโต๊ะ ไม่รวมกัน (เช่น ไข่เจียวโต๊ะ 1 / ไข่เจียวโต๊ะ 3)<br>
+        <strong>🟢 รวมได้</strong> — ครัวเห็นรวมยอดทุกโต๊ะเป็นก้อนเดียว (เช่น ลาบรวม 5 จาน)
+      </p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+        <input id="mmNbSearch" type="text" placeholder="🔍 ค้นหาเมนู..." oninput="mmRenderNbTab()"
+          style="flex:1; min-width:150px; font-size:15px; padding:8px 12px; border:2px solid #e67e22; border-radius:8px;">
+        <button id="mmNbBtnAll"   onclick="mmNbSetFilter('all')"   style="background:#e67e22; color:white; border:2px solid #e67e22; padding:8px 13px; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer;">ทั้งหมด</button>
+        <button id="mmNbBtnSplit" onclick="mmNbSetFilter('split')" style="background:#f8f9fa; color:#555; border:2px solid #ddd; padding:8px 13px; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer;">🔴 แยก</button>
+        <button id="mmNbBtnMerge" onclick="mmNbSetFilter('merge')" style="background:#f8f9fa; color:#555; border:2px solid #ddd; padding:8px 13px; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer;">🟢 รวม</button>
+      </div>
+      <div id="mmNbList" style="max-height:52vh; overflow-y:auto; border:1px solid #eee; border-radius:10px;"></div>
+      <div id="mmNbStatus" style="text-align:center; margin-top:10px; font-size:14px; color:#27ae60; min-height:18px;"></div>
+    </div>
+
+  </div>
+</div>
+<!-- ================= จบ Modal จัดการเมนู ================= -->
+
+<style>
+.field-label2 { font-size:14px; font-weight:600; color:#555; margin-bottom:4px; }
+.field-group2 { margin-bottom:14px; }
+.mm-adm-input { width:100%; font-size:16px; padding:9px 14px; border:2px solid #e67e22; border-radius:8px; box-sizing:border-box; }
+.mm-adm-input:focus { outline:none; border-color:#c0392b; }
+.mm-adm-select { width:100%; font-size:16px; padding:9px 12px; border:2px solid #e67e22; border-radius:8px; background:white; }
+.mm-chef-checkbox { background:white; border:2px solid #ddd; border-radius:8px; padding:10px 12px; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:16px; font-weight:600; transition:all 0.15s; }
+.mm-chef-checkbox.selected { background:#fff3e0; border-color:#e67e22; color:#e67e22; }
+.mm-chef-card { background:white; border:2px solid #dee2e6; border-radius:12px; margin-bottom:14px; overflow:hidden; }
+.mm-chef-card-header { color:white; padding:10px 16px; font-size:18px; font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
+.mm-chef-keyword-list { padding:10px 14px; display:flex; flex-wrap:wrap; gap:6px; }
+.mm-chef-keyword-tag { background:#e8f4fd; border:1px solid #007bff; color:#007bff; padding:4px 10px; border-radius:20px; font-size:14px; font-weight:600; display:flex; align-items:center; gap:5px; }
+.mm-chef-keyword-tag button { background:none; border:none; color:#e74c3c; cursor:pointer; font-size:14px; padding:0; line-height:1; }
+.mm-chef-add-kw { display:flex; gap:6px; padding:8px 14px 12px; }
+.mm-chef-kw-input { flex:1; font-size:15px; padding:7px 10px; border:2px solid #007bff; border-radius:8px; }
+.mm-chef-kw-btn { color:white; border:none; padding:7px 14px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:bold; }
+.mm-tab { background:#f1f3f5; border:2px solid transparent; padding:7px 16px; border-radius:20px; font-size:15px; font-weight:600; cursor:pointer; color:#555; transition:all 0.2s; }
+.mm-tab:hover { background:#e9ecef; }
+.mm-tab-active { background:#e67e22 !important; color:white !important; border-color:#e67e22 !important; }
+.mm-cat-row { background:white; border:1px solid #e9ecef; border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:8px; }
+.mm-cat-row:hover { border-color:#e67e22; }
+.mm-menu-row { background:white; border:1px solid #e9ecef; border-radius:8px; padding:8px 12px; display:flex; align-items:center; gap:8px; }
+.mm-menu-row:hover { border-color:#e67e22; }
+.mm-order-btn { background:#f8f9fa; border:1px solid #ddd; color:#555; width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.mm-order-btn:hover { background:#e67e22; color:white; border-color:#e67e22; }
+.mm-del-btn { background:none; border:none; color:#e74c3c; font-size:18px; cursor:pointer; padding:2px 6px; border-radius:4px; flex-shrink:0; }
+.mm-del-btn:hover { background:#fde8e8; }
+.mm-drag-handle { color:#ccc; cursor:grab; font-size:18px; padding:0 4px; flex-shrink:0; user-select:none; }
+.mm-drag-handle:active { cursor:grabbing; }
+.mm-row-dragging { opacity:0.4; border:2px dashed #e67e22 !important; }
+.mm-row-dragover { border-top:3px solid #e67e22 !important; }
+</style>
+
+<!-- ================= Modal ใส่ PIN ================= -->
+<div id="pinModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:3000; display:none; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:16px; padding:30px; max-width:340px; width:90%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+    <h2 style="margin:0 0 8px; color:#2c3e50; font-size:22px;">🔒 เจ้าของเท่านั้น</h2>
+    <p id="pinModalSubtitle" style="color:#7f8c8d; font-size:15px; margin:0 0 20px;">ใส่รหัส PIN 4 หลัก</p>
+    <div id="pinDots" style="display:flex; justify-content:center; gap:12px; margin-bottom:20px;">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:240px; margin:0 auto 15px;">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key" onclick="pinKey('clear')" style="background:#e74c3c; color:white;">✕</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key" onclick="pinKey('back')" style="background:#e67e22; color:white;">⌫</button>
+    </div>
+    <p id="pinError" style="color:#e74c3c; font-size:14px; min-height:20px; margin:0 0 10px;"></p>
+    <button onclick="closePinModal()" style="background:none; border:1px solid #ccc; color:#999; padding:8px 20px; border-radius:8px; cursor:pointer; font-size:14px;">ยกเลิก</button>
+  </div>
+</div>
+
+<!-- ================= Modal เมนูเจ้าของ ================= -->
+<div id="ownerMenuModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:3000; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:16px; padding:30px; max-width:380px; width:90%; text-align:center;">
+    <h2 style="margin:0 0 20px; color:#2c3e50;">🔑 เมนูเจ้าของ</h2>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <button onclick="closeOwnerMenu(); openPriceSetting();" style="background:linear-gradient(135deg,#27ae60,#2ecc71); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">💰 ตั้งราคาเมนู</button>
+      <button onclick="closeOwnerMenu(); openDailySummary();" style="background:linear-gradient(135deg,#16a085,#1abc9c); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📊 สรุปยอดรายวัน</button>
+      <button onclick="closeOwnerMenu(); openRevenue();" style="background:linear-gradient(135deg,#2980b9,#3498db); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📈 สรุปยอดขายเงิน</button>
+      <button onclick="closeOwnerMenu(); openMenuManager();" style="background:linear-gradient(135deg,#e67e22,#f39c12); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🍽️ จัดการเมนู</button>
+      <button onclick="closeOwnerMenu(); openChangePin();" style="background:linear-gradient(135deg,#8e44ad,#9b59b6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🔐 เปลี่ยน PIN</button>
+    </div>
+    <button onclick="closeOwnerMenu()" style="margin-top:16px; background:none; border:1px solid #ccc; color:#999; padding:8px 24px; border-radius:8px; cursor:pointer;">ปิด</button>
+  </div>
+</div>
+
+<!-- ================= Modal ตั้งราคา ================= -->
+<div id="priceSettingModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:3000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="background:white; max-width:700px; margin:20px auto; border-radius:16px; padding:24px; position:relative;">
+    <button onclick="closePriceSetting()" style="position:absolute; top:12px; right:16px; font-size:26px; background:none; border:none; cursor:pointer;">✕</button>
+    <h2 style="margin:0 0 6px; color:#27ae60;">💰 ตั้งราคาเมนู</h2>
+    <p style="color:#7f8c8d; font-size:14px; margin:0 0 16px;">เมนูที่ไม่ได้ตั้งราคาจะไม่ถูกนับในยอดขาย</p>
+    <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <input id="priceSearchInput" type="text" placeholder="ค้นหาเมนู..." oninput="filterPriceList()" style="flex:1; min-width:160px; padding:8px 12px; border:2px solid #27ae60; border-radius:8px; font-size:16px;">
+      <button onclick="savePrices()" style="background:#27ae60; color:white; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; font-weight:bold;">💾 บันทึกทั้งหมด</button>
+    </div>
+    <div id="priceListContainer" style="max-height:60vh; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- ================= Modal สรุปยอดขายเงิน (v6) ================= -->
+<div id="revenueModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); z-index:2000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="background:#f8f9fa; max-width:780px; margin:20px auto 40px; border-radius:16px; padding:0; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.25); overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a3a1a,#1e5631); padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">💰 สรุปยอดขายเป็นเงิน</div>
+        <div style="color:rgba(255,255,255,0.6); font-size:13px; margin-top:3px;">รายได้และยอดขายแต่ละเมนู</div>
+      </div>
+      <button onclick="closeRevenue()" style="background:rgba(255,255,255,0.15); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="background:white; padding:14px 20px; border-bottom:1px solid #e9ecef; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="revTabDay"   onclick="setRevenueMode('day')"   class="summary-tab summary-tab-rev-active">📅 รายวัน</button>
+      <button id="revTabWeek"  onclick="setRevenueMode('week')"  class="summary-tab">📆 สัปดาห์นี้</button>
+      <button id="revTabMonth" onclick="setRevenueMode('month')" class="summary-tab">🗓️ เดือนนี้</button>
+      <button id="revTabRange" onclick="setRevenueMode('range')" class="summary-tab">🔍 กำหนดเอง</button>
+    </div>
+
+    <!-- Date Controls -->
+    <div style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef;">
+      <div id="revCtrlDay" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">เลือกวัน:</label>
+        <input type="date" id="revenueDatePicker" style="font-size:16px; padding:7px 12px; border:2px solid #27ae60; border-radius:8px;" onchange="runRevenueLoad()">
+        <button onclick="setRevenueToday()" style="background:#27ae60; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">วันนี้</button>
+        <button onclick="shiftRevDay(-1)" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;">◀</button>
+        <button onclick="shiftRevDay(1)"  style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;">▶</button>
+      </div>
+      <div id="revCtrlRange" style="display:none; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ตั้งแต่:</label>
+        <input type="date" id="revRangeStart" style="font-size:16px; padding:7px 12px; border:2px solid #27ae60; border-radius:8px;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ถึง:</label>
+        <input type="date" id="revRangeEnd"   style="font-size:16px; padding:7px 12px; border:2px solid #27ae60; border-radius:8px;">
+        <button onclick="runRevenueLoad()" style="background:#27ae60; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">ดูข้อมูล</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="revenueContent" style="padding:20px;">
+      <p style="color:#888; font-size:16px; text-align:center; padding:30px 0;">เลือกช่วงเวลาที่ต้องการครับ</p>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.summary-tab-rev-active { background:#27ae60 !important; color:white !important; border-color:#27ae60 !important; }
+.rev-table { width:100%; border-collapse:collapse; font-size:16px; }
+.rev-table thead tr { background:#1e5631; color:white; }
+.rev-table thead th { padding:11px 14px; text-align:left; font-weight:700; font-size:15px; }
+.rev-table thead th:nth-child(2),.rev-table thead th:nth-child(3),.rev-table thead th:nth-child(4) { text-align:center; }
+.rev-table tbody tr:nth-child(even) { background:#f8f9fa; }
+.rev-table tbody tr:nth-child(odd)  { background:white; }
+.rev-table tbody tr:hover { background:#e8f8ee; }
+.rev-table td { padding:11px 14px; font-size:16px; color:#2c3e50; border-bottom:1px solid #e9ecef; }
+.rev-table td:nth-child(2) { text-align:center; font-weight:700; color:#2980b9; }
+.rev-table td:nth-child(3) { text-align:right; color:#555; }
+.rev-table td:nth-child(4) { text-align:right; font-weight:700; color:#27ae60; }
+.rev-table tfoot td { padding:13px 14px; font-weight:700; background:#1e5631; color:white; font-size:17px; }
+</style>
+
+<!-- ================= Modal เปลี่ยน PIN ================= -->
+<div id="changePinModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:3000; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:16px; padding:30px; max-width:340px; width:90%; text-align:center;">
+    <h2 style="margin:0 0 16px; color:#8e44ad;">🔐 ตั้ง PIN ใหม่</h2>
+    <p style="color:#7f8c8d; font-size:14px; margin:0 0 16px;">PIN ใหม่ 4 หลัก</p>
+    <input id="newPin1" type="password" maxlength="4" inputmode="numeric" placeholder="PIN ใหม่" style="width:120px; font-size:24px; text-align:center; padding:10px; border:2px solid #8e44ad; border-radius:8px; margin-bottom:10px; letter-spacing:8px;">
+    <br>
+    <input id="newPin2" type="password" maxlength="4" inputmode="numeric" placeholder="ยืนยัน PIN" style="width:120px; font-size:24px; text-align:center; padding:10px; border:2px solid #8e44ad; border-radius:8px; margin-bottom:16px; letter-spacing:8px;">
+    <br>
+    <p id="changePinError" style="color:#e74c3c; font-size:14px; min-height:18px; margin:0 0 12px;"></p>
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button onclick="saveNewPin()" style="background:#8e44ad; color:white; border:none; padding:10px 24px; border-radius:8px; font-size:16px; cursor:pointer;">บันทึก PIN</button>
+      <button onclick="closeChangePin()" style="background:none; border:1px solid #ccc; color:#999; padding:10px 24px; border-radius:8px; cursor:pointer;">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.pin-dot { width:16px; height:16px; border-radius:50%; border:2px solid #bbb; background:white; transition:background 0.15s; }
+.pin-dot.filled { background:#2c3e50; border-color:#2c3e50; }
+.pin-key { background:#f8f9fa; border:2px solid #ddd; border-radius:10px; font-size:24px; font-weight:bold; padding:14px; cursor:pointer; transition:background 0.1s; color:#2c3e50; }
+.pin-key:active { background:#ddd; }
+.price-row { display:flex; align-items:center; justify-content:space-between; padding:10px 8px; border-bottom:1px solid #eee; font-size:16px; }
+.price-row:last-child { border-bottom:none; }
+.price-input { width:90px; padding:6px 8px; border:2px solid #ddd; border-radius:6px; font-size:16px; text-align:right; }
+.price-input:focus { border-color:#27ae60; outline:none; }
+
+/* ================= Staff Name Popup ================= */
+#staffNameOverlay {
+  display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.6); z-index:9999;
+  align-items:center; justify-content:center;
+}
+#staffNameOverlay.show { display:flex; }
+#staffNameBox {
+  background:white; border-radius:16px; padding:30px 28px; max-width:340px; width:90%;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3); text-align:center;
+}
+#staffNameInput {
+  width:100%; font-size:22px; padding:10px 14px; border:2px solid #4CAF50;
+  border-radius:8px; text-align:center; box-sizing:border-box; margin:14px 0;
+}
+#staffNameInput:focus { outline:none; border-color:#2ecc71; }
+#staffNameConfirmBtn {
+  background:linear-gradient(135deg,#4CAF50,#2ecc71); color:white; border:none;
+  padding:12px 32px; border-radius:8px; font-size:18px; font-weight:bold;
+  cursor:pointer; width:100%;
+}
+/* ชื่อพนักงานในแถบสีเขียว */
+#staffBadge {
+  font-size:12px; opacity:0.85; margin-left:8px;
+  display:inline-flex; align-items:center; gap:5px;
+}
+#staffChangeBtnInline {
+  background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);
+  color:white; font-size:10px; padding:1px 6px; border-radius:4px;
+  cursor:pointer; line-height:1.4;
+}
+#staffChangeBtnInline:hover { background:rgba(255,255,255,0.35); }
+/* ================= จบ Staff Popup ================= */
+</style>
+
 <script>
 const firebaseConfig = {
     apiKey: "AIzaSyDskwJlUNbr3zkKnyY_-n582PdoCrts2AE",
@@ -238,10 +668,10 @@ const BASE_PATH = "racing_order_app/";
 let deviceId = localStorage.getItem('kaki_dev_id') || 'dev_' + Math.random().toString(36).substr(2, 9);
 localStorage.setItem('kaki_dev_id', deviceId);
 
-const chefMenus={'kik':['ต้มแซ่บ','คั่ว','ผักหวาน','แป๊ะซะ','แวะถัวะ','ผัดเผ็ด','อ่อม','แกงป่าผัก','แกงป่าหน่อไม้ดอง','แกงป่าหน่อไม้สด','บอน','มะรุม','กระบุก','แกงไก่หน่อ','แกงหมูหน่อ','แกงเนื้อหน่อ','แกงปลา','ผัดฉ่า','ปลาร้า','ไก่น้ำปลา','สามชั้น','หมูน้ำปลา','โสม','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ'],'jeab':['ไข่เจียว','แกงหอย','พิเศษ','ทอง','แถม','หมกหม้อ','ขี้เหล็ก','ต้มจืด','ทอดมัน','หมกปลานิล','ไก่หลงทาง'],'nan':['ขาหมู','ข้าว','ขนม','นึ่ง'],'see':['ลาบ','ปลาเนื้ออ่อน','ปลานิลแดดเดียว','สมุนไพร','สะเดาน้ำปลาหวาน','ตำ','ปลาหลด','เตี๋ยว','ต้มยำ','เกา','ชุดโปร']};
-const nonBatchableMenuItems=['ปลาช่อนแป๊ะซะ','ปลาช่อนแวะถัวะ','อ่อมหมู','ผักหวานไข่มดแดง','ผักหวาน','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ','ไข่เจียวบาว','ไข่เจียวธรรมดา','ไข่เจียวหมูสับ','ไข่เจียวไข่มดแดง','ชุดโปร'];
+let chefMenus={'kik':['ต้มแซ่บ','คั่ว','ผักหวาน','แป๊ะซะ','แวะถัวะ','ผัดเผ็ด','อ่อม','แกงป่าผัก','แกงป่าหน่อไม้ดอง','แกงป่าหน่อไม้สด','บอน','มะรุม','กระบุก','แกงไก่หน่อ','แกงหมูหน่อ','แกงเนื้อหน่อ','แกงปลา','ผัดฉ่า','ปลาร้า','ไก่น้ำปลา','สามชั้น','หมูน้ำปลา','โสม','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ'],'jeab':['ไข่เจียว','แกงหอย','พิเศษ','ทอง','แถม','หมกหม้อ','ขี้เหล็ก','ต้มจืด','ทอดมัน','หมกปลานิล','ไก่หลงทาง'],'nan':['ขาหมู','ข้าว','ขนม','นึ่ง'],'see':['ลาบ','ปลาเนื้ออ่อน','ปลานิลแดดเดียว','สมุนไพร','สะเดาน้ำปลาหวาน','ตำ','ปลาหลด','เตี๋ยว','ต้มยำ','เกา','ชุดโปร']}; // fallback; overwritten by Firebase
+let nonBatchableMenuItems=['ปลาช่อนแป๊ะซะ','ปลาช่อนแวะถัวะ','อ่อมหมู','ผักหวานไข่มดแดง','ผักหวาน','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ','ไข่เจียวบาว','ไข่เจียวธรรมดา','ไข่เจียวหมูสับ','ไข่เจียวไข่มดแดง','ชุดโปร']; // fallback; overwritten by Firebase
 
-const menuCategories = {
+let menuCategories = {
 'ของทอด': ['ปลาเนื้ออ่อน', 'ปลานิลแดดเดียว', 'หมูทอดสมุนไพร', 'สะเดาน้ำปลาหวาน', 'ปลาหลด'],
   
   'คั่ว': ['คั่วไก่', 'คั่วกบ', 'คั่วเนื้อ', 'คั่วหมู', 'คั่วปลาไหล', 'คั่วเครื่องใน'],
@@ -289,7 +719,7 @@ const menuCategories = {
 };
 
 let orderCounts = {}, menuComments = {}, selectionOrder = [];
-let orders = [], completedOrders = [], totalOrders = {}, soldOutMap = {};
+let orders = [], completedOrders = [], completedOrdersWithKeys = [], totalOrders = {}, soldOutMap = {};
 let isStockMode = false;
 
 function createCategoryButtons() {
@@ -388,11 +818,14 @@ function decrementOrderCount(i) {
 
 function saveTable(t, isRes = false) {
     const timestamp = isRes ? new Date(Date.now() - 86400000).toISOString() : new Date().toISOString();
+    const staffName = localStorage.getItem('staff_name') || '';
     selectionOrder.forEach(i => {
         if (orderCounts[i] > 0) {
-            db.ref(BASE_PATH + 'orders').push({
+            const orderData = {
                 table: t, item: i, quantity: orderCounts[i], comment: (menuComments[i] || '').trim(), timestamp: timestamp
-            });
+            };
+            if (staffName) orderData.staff = staffName;
+            db.ref(BASE_PATH + 'orders').push(orderData);
             totalOrders[i] = (totalOrders[i] || 0) + orderCounts[i];
         }
     });
@@ -453,10 +886,11 @@ function showTableOrders() {
         
         // ใส่ชื่อเมนู (ถ้าเสร็จแล้วให้ขีดฆ่า)
         const itemCell = r.insertCell();
+        const staffTag = o.staff ? `<div style="font-size:11px; color:#27ae60; margin-top:2px; line-height:1;">👤 ${o.staff}</div>` : '';
         if (isReady) {
-           itemCell.innerHTML = `<span style="color: #155724; font-weight: bold;">✅ ${o.item} (เสร็จแล้ว!)</span>`;
+           itemCell.innerHTML = `<span style="color: #155724; font-weight: bold;">✅ ${o.item} (เสร็จแล้ว!)</span>${staffTag}`;
         } else {
-            itemCell.textContent = o.item;
+            itemCell.innerHTML = `<span>${o.item}</span>${staffTag}`;
         }
 
         r.insertCell().textContent = o.quantity;
@@ -484,7 +918,7 @@ function showTotalOrders() {
     
     // 1. จัดกลุ่ม และเก็บเวลาที่เก่าที่สุดของกลุ่มนั้นไว้
     orders.forEach(o => {
-        const k = nonBatchableMenuItems.includes(o.item) ? `${o.item}-${o.timestamp}` : `${o.item}-${o.comment}`;
+        const k = nonBatchableMenuItems.includes(o.item) ? `SOLO-${o.id}` : `${o.item}-${o.comment}`;
         if (!b[k]) b[k] = { item: o.item, comment: o.comment, reg: 0, th: 0, minTs: o.timestamp };
         
         // เก็บเวลาที่น้อยที่สุด (เก่าที่สุด) เพื่อใช้เรียงลำดับ
@@ -527,9 +961,28 @@ function changeTableName(){
 
 function showCompletedOrders() {
     const e = document.getElementById('completedOrders'); e.innerHTML = '<h2>เสร็จแล้ว</h2>';
-    completedOrders.slice().reverse().slice(0, 15).forEach(o => {
-        e.innerHTML += `<p>โต๊ะ ${o.table}: ${o.item} ${o.comment ? '('+o.comment+')' : ''}</p>`;
+    // ดึงข้อมูลพร้อม Firebase key จาก snap ที่เก็บไว้
+    completedOrdersWithKeys.slice().reverse().slice(0, 15).forEach(({ key, data: o }) => {
+        const p = document.createElement('p');
+        p.style.display = 'flex'; p.style.alignItems = 'center'; p.style.gap = '8px'; p.style.justifyContent = 'center';
+        const txt = document.createTextNode(`โต๊ะ ${o.table}: ${o.item}${o.comment ? ' ('+o.comment+')' : ''} `);
+        const btn = document.createElement('button');
+        btn.className = 'order-button undo-button';
+        btn.style.cssText = 'width:auto;padding:4px 12px;font-size:14px;margin:0;';
+        btn.textContent = 'เรียกคืน';
+        btn.onclick = () => undoSpecificComplete(key, o);
+        p.appendChild(txt); p.appendChild(btn);
+        e.appendChild(p);
     });
+}
+
+function undoSpecificComplete(key, data) {
+    const o = { ...data };
+    delete o.completedAt; delete o.id;
+    db.ref(BASE_PATH + 'orders').push(o);
+    totalOrders[o.item] = (totalOrders[o.item] || 0) + o.quantity;
+    db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
+    db.ref(BASE_PATH + 'completedOrders/' + key).remove();
 }
 
 function toggleStockMode() {
@@ -541,9 +994,53 @@ function toggleStockMode() {
 
 function clearCompletedOrders() { if(confirm('ล้างรายการที่เสร็จแล้ว?')) db.ref(BASE_PATH + 'completedOrders').remove(); }
 
+// ================= ระบบชื่อพนักงาน =================
+let currentStaffName = '';
+
+function initStaffName() {
+    const saved = localStorage.getItem('staff_name');
+    if (saved && saved.trim()) {
+        currentStaffName = saved.trim();
+        updateStaffBadge();
+    } else {
+        showStaffPopup();
+    }
+}
+
+function showStaffPopup() {
+    const overlay = document.getElementById('staffNameOverlay');
+    overlay.classList.add('show');
+    const input = document.getElementById('staffNameInput');
+    input.value = currentStaffName || '';
+    setTimeout(() => input.focus(), 100);
+    input.onkeydown = (e) => { if (e.key === 'Enter') confirmStaffName(); };
+}
+
+function confirmStaffName() {
+    const input = document.getElementById('staffNameInput');
+    const name = input.value.trim();
+    if (!name) { input.style.borderColor = '#e74c3c'; return; }
+    currentStaffName = name;
+    localStorage.setItem('staff_name', name);
+    document.getElementById('staffNameOverlay').classList.remove('show');
+    updateStaffBadge();
+}
+
+function updateStaffBadge() {
+    const badge = document.getElementById('staffBadge');
+    if (!badge) return;
+    if (currentStaffName) {
+        badge.innerHTML = `👤 ${currentStaffName} <button id="staffChangeBtnInline" onclick="showStaffPopup()">เปลี่ยน</button>`;
+    } else {
+        badge.innerHTML = '';
+    }
+}
+// ================= จบระบบชื่อพนักงาน =================
+
 window.addEventListener('load', () => {
+    initStaffName();
     initTables();
-    createCategoryButtons();
+    loadMenuCategoriesFromFirebase(); // โหลด menuCategories จาก Firebase ก่อน แล้วค่อย createCategoryButtons
     db.ref(BASE_PATH + 'orders').on('value', snap => {
         const val = snap.val();
         orders = val ? Object.entries(val).map(([id, data]) => ({ id, ...data })) : [];
@@ -552,6 +1049,7 @@ window.addEventListener('load', () => {
     db.ref(BASE_PATH + 'completedOrders').on('value', snap => {
         const val = snap.val();
         completedOrders = val ? Object.values(val) : [];
+        completedOrdersWithKeys = val ? Object.entries(val).map(([key, data]) => ({ key, data })) : [];
         showCompletedOrders();
     });
     db.ref(BASE_PATH + 'totalOrders').on('value', snap => { totalOrders = snap.val() || {}; });
@@ -608,6 +1106,40 @@ function initTables() {
         btn.onclick = () => saveTable(i.toString());
         container.appendChild(btn);
     }
+
+     // ================= ปุ่มช่องทางพิเศษ (เพิ่มใหม่) =================
+    const specialChannels = [
+        // กลับบ้าน — สีเหลืองทอง อบอุ่น มองเห็นง่าย
+        { name: 'กลับบ้าน', icon: '🏠', bg: 'linear-gradient(135deg, #f9a825, #ffd600)', textColor: '#3e2000' },
+        // Grab — เขียว Grab official #00b14f
+        { name: 'แกรป',    icon: '🟢', bg: 'linear-gradient(135deg, #007a37, #00b14f)', textColor: '#ffffff' },
+        // Shopee — ส้มแดง Shopee official #ee4d2d
+        { name: 'ช็อปปี้',  icon: '🛒', bg: 'linear-gradient(135deg, #c0392b, #ee4d2d)', textColor: '#ffffff' },
+        // LINE MAN — เขียว LINE official #00c300
+        { name: 'ไลน์แมน', icon: '💚', bg: 'linear-gradient(135deg, #00962a, #00c300)', textColor: '#ffffff' },
+    ];
+
+    specialChannels.forEach(channel => {
+        const btn = document.createElement('button');
+        btn.className = 'table-button';
+        btn.innerHTML = `${channel.icon} ${channel.name}`;
+        btn.style.background   = channel.bg;
+        btn.style.color        = channel.textColor;
+        btn.style.fontWeight   = 'bold';
+        btn.style.border       = 'none';
+        // เงาสีตามปุ่ม
+        btn.style.boxShadow    = '0 4px 12px rgba(0,0,0,0.22)';
+
+        btn.onclick = () => {
+            const num = prompt(`กรอกเลขออเดอร์ "${channel.name}":`, '');
+            if (num === null || num.trim() === '') return;
+            const tableName = channel.name + ' ' + num.trim();
+            saveTable(tableName);
+        };
+
+        container.appendChild(btn);
+    });
+    // ================= จบปุ่มช่องทางพิเศษ =================
 }
 
 
@@ -679,6 +1211,1236 @@ window.addEventListener('load', () => {
     });
 });
 // ================= จบระบบเรียกเก็บเงิน =================
+
+// ================= ระบบสรุปยอดรายวัน (v5) =================
+let summaryMode = 'day'; // 'day' | 'week' | 'month' | 'range'
+
+function openDailySummary() {
+    document.getElementById('dailySummaryModal').style.display = 'block';
+    setSummaryMode('day');
+    checkFirebaseUsage();
+}
+function closeDailySummary() {
+    document.getElementById('dailySummaryModal').style.display = 'none';
+}
+
+function setSummaryMode(mode) {
+    summaryMode = mode;
+    // อัปเดต tab active
+    ['day','week','month','range'].forEach(m => {
+        const t = document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1));
+        if (t) t.className = 'summary-tab' + (m === mode ? ' summary-tab-active' : '');
+    });
+    // แสดง/ซ่อน controls
+    document.getElementById('ctrlDay').style.display   = (mode === 'day')   ? 'flex' : 'none';
+    document.getElementById('ctrlRange').style.display = (mode === 'range') ? 'flex' : 'none';
+
+    if (mode === 'day') {
+        // ถ้ายังไม่มีวันที่ ให้ใส่วันนี้
+        if (!document.getElementById('summaryDatePicker').value) setTodayAndLoad();
+        else runSummaryLoad();
+    } else if (mode === 'week' || mode === 'month') {
+        runSummaryLoad();
+    }
+    // range: รอให้กดปุ่ม
+}
+
+function shiftDay(delta) {
+    const picker = document.getElementById('summaryDatePicker');
+    if (!picker.value) { setTodayAndLoad(); return; }
+    const d = new Date(picker.value + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    picker.value = d.toISOString().slice(0, 10);
+    runSummaryLoad();
+}
+
+function setTodayAndLoad() {
+    const today = new Date();
+    document.getElementById('summaryDatePicker').value = today.toISOString().slice(0, 10);
+    // ตั้ง range default เป็น 7 วันย้อนหลัง
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 6);
+    document.getElementById('rangeStart').value = weekAgo.toISOString().slice(0, 10);
+    document.getElementById('rangeEnd').value   = today.toISOString().slice(0, 10);
+    runSummaryLoad();
+}
+
+function getDateRange() {
+    const today = new Date();
+    today.setHours(23, 59, 59, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    if (summaryMode === 'day') {
+        const d = document.getElementById('summaryDatePicker').value || todayStr;
+        return { start: d + 'T00:00:00', end: d + 'T23:59:59', label: formatThaiDate(d), days: 1 };
+    }
+    if (summaryMode === 'week') {
+        const now = new Date();
+        const dow = now.getDay(); // 0=อาทิตย์
+        const mon = new Date(now); mon.setDate(now.getDate() - ((dow + 6) % 7)); // จันทร์
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        const s = mon.toISOString().slice(0, 10);
+        const e = sun.toISOString().slice(0, 10);
+        return { start: s + 'T00:00:00', end: e + 'T23:59:59', label: `${formatThaiDate(s)} — ${formatThaiDate(e)}`, days: 7 };
+    }
+    if (summaryMode === 'month') {
+        const now = new Date();
+        const y = now.getFullYear(), m = now.getMonth();
+        const s = `${y}-${String(m+1).padStart(2,'0')}-01`;
+        const lastDay = new Date(y, m+1, 0).getDate();
+        const e = `${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+        const mName = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+        return { start: s + 'T00:00:00', end: e + 'T23:59:59', label: mName, days: lastDay };
+    }
+    if (summaryMode === 'range') {
+        const s = document.getElementById('rangeStart').value;
+        const e = document.getElementById('rangeEnd').value;
+        if (!s || !e) return null;
+        const days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+        return { start: s + 'T00:00:00', end: e + 'T23:59:59', label: `${formatThaiDate(s)} — ${formatThaiDate(e)}`, days };
+    }
+    return null;
+}
+
+function formatThaiDate(dateStr) {
+    return new Date(dateStr + 'T12:00:00').toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+}
+
+function runSummaryLoad() {
+    const range = getDateRange();
+    if (!range) return;
+    const content = document.getElementById('summaryContent');
+    content.innerHTML = '<p style="color:#888; text-align:center; padding:30px 0; font-size:16px;">⏳ กำลังโหลด...</p>';
+
+    // ดึง daily snapshots ก่อน แล้วค่อย fallback ไป raw orders
+    Promise.all([
+        db.ref(BASE_PATH + 'orders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
+        db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
+        db.ref(BASE_PATH + 'dailySnapshots').orderByKey().startAt(range.start.slice(0,10)).endAt(range.end.slice(0,10)).once('value')
+    ]).then(([ordersSnap, completedSnap, snapshotsSnap]) => {
+        const allItems = {};
+        const staffStats = {}; // { staffName: { tables: Set, dishes: number } }
+        let totalFromSnap = 0;
+
+        // --- รวมจาก dailySnapshots (ข้อมูลที่บีบอัดแล้ว) ---
+        if (snapshotsSnap.exists()) {
+            Object.entries(snapshotsSnap.val()).forEach(([date, snap]) => {
+                if (snap.items) {
+                    Object.entries(snap.items).forEach(([item, qty]) => {
+                        allItems[item] = (allItems[item] || 0) + qty;
+                        totalFromSnap += qty;
+                    });
+                }
+            });
+        }
+
+        // --- รวมจาก raw orders (วันที่ยังไม่ได้บีบอัด) ---
+        function tally(snap) {
+            if (!snap.exists()) return;
+            Object.values(snap.val()).forEach(o => {
+                const key = o.item + (o.comment ? ' (' + o.comment + ')' : '');
+                allItems[key] = (allItems[key] || 0) + (o.quantity || 1);
+                // เก็บสถิติพนักงาน
+                if (o.staff) {
+                    if (!staffStats[o.staff]) staffStats[o.staff] = { tables: new Set(), dishes: 0 };
+                    staffStats[o.staff].tables.add(o.table);
+                    staffStats[o.staff].dishes += (o.quantity || 1);
+                }
+            });
+        }
+        tally(ordersSnap);
+        tally(completedSnap);
+
+        renderSummary(allItems, range, staffStats);
+    }).catch(err => {
+        content.innerHTML = '<p style="color:red; padding:20px;">❌ เกิดข้อผิดพลาด: ' + err.message + '</p>';
+    });
+}
+
+function renderSummary(allItems, range, staffStats) {
+    const content = document.getElementById('summaryContent');
+    const entries = Object.entries(allItems).sort((a, b) => b[1] - a[1]);
+    const total   = entries.reduce((s, [, q]) => s + q, 0);
+
+    if (entries.length === 0) {
+        content.innerHTML = `<p style="color:#e74c3c; font-size:18px; text-align:center; padding:30px 0;">ไม่พบออเดอร์ในช่วงเวลาที่เลือกครับ</p>`;
+        return;
+    }
+
+    const avgPerDay = range.days > 1 ? (total / range.days).toFixed(1) : null;
+    const topItem   = entries[0][0];
+    const topQty    = entries[0][1];
+    const uniqueMenus = entries.length;
+
+    // --- Stat Cards ---
+    let html = `<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);">
+        <div class="summary-stat-label">📅 ช่วงเวลา</div>
+        <div style="font-size:14px; font-weight:600; margin-top:4px; line-height:1.3;">${range.label}</div>
+      </div>
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71);">
+        <div class="summary-stat-label">จานทั้งหมด</div>
+        <div class="summary-stat-value">${total}</div>
+        <div class="summary-stat-unit">จาน</div>
+      </div>
+      ${avgPerDay ? `<div class="summary-stat-card" style="background:linear-gradient(135deg,#2980b9,#3498db);">
+        <div class="summary-stat-label">เฉลี่ยต่อวัน</div>
+        <div class="summary-stat-value">${avgPerDay}</div>
+        <div class="summary-stat-unit">จาน/วัน</div>
+      </div>` : ''}
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#e67e22,#f39c12);">
+        <div class="summary-stat-label">เมนูทั้งหมด</div>
+        <div class="summary-stat-value">${uniqueMenus}</div>
+        <div class="summary-stat-unit">เมนู</div>
+      </div>
+    </div>`;
+
+    // --- Top 3 ---
+    if (entries.length >= 1) {
+        const medals = ['🥇','🥈','🥉'];
+        html += `<div style="background:white; border-radius:10px; padding:14px 16px; margin-bottom:16px; border:1px solid #e9ecef;">
+          <div style="font-size:15px; font-weight:700; color:#2c3e50; margin-bottom:10px;">🏆 เมนูยอดนิยม</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">`;
+        entries.slice(0, 3).forEach(([name, qty], i) => {
+            const pct = Math.round(qty / total * 100);
+            html += `<div style="flex:1; min-width:120px; background:#f8f9fa; border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:24px;">${medals[i]}</div>
+              <div style="font-size:15px; font-weight:700; color:#2c3e50; margin:4px 0;">${name}</div>
+              <div style="font-size:20px; font-weight:bold; color:#2980b9;">${qty} <span style="font-size:13px;">จาน</span></div>
+              <div style="font-size:12px; color:#888;">${pct}% ของทั้งหมด</div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    // --- Full Table ---
+    const maxQty = entries[0][1];
+    html += `<div style="background:white; border-radius:10px; overflow:hidden; border:1px solid #e9ecef;">
+      <table class="summary-table">
+        <thead><tr>
+          <th style="width:50%;">เมนู</th>
+          <th style="width:80px;">จาน</th>
+          <th>สัดส่วน</th>
+        </tr></thead>
+        <tbody>`;
+
+    entries.forEach(([name, qty]) => {
+        const pct  = Math.round(qty / total * 100);
+        const barW = Math.round(qty / maxQty * 100);
+        const barColor = barW === 100 ? '#e74c3c' : barW >= 60 ? '#e67e22' : barW >= 30 ? '#f1c40f' : '#27ae60';
+        html += `<tr>
+          <td>${name}</td>
+          <td>${qty}</td>
+          <td>
+            <div class="summary-bar-wrap">
+              <div class="summary-bar-fill" style="background:${barColor}; width:${barW}%;">
+                ${pct >= 12 ? pct + '%' : ''}
+              </div>
+            </div>
+            <div style="font-size:12px; color:#888; margin-top:2px;">${pct}%</div>
+          </td>
+        </tr>`;
+    });
+
+    html += `</tbody>
+      <tfoot><tr>
+        <td>รวมทั้งหมด</td>
+        <td style="text-align:center;">${total}</td>
+        <td>100%</td>
+      </tr></tfoot>
+      </table>
+    </div>`;
+
+    // --- Staff Summary (แสดงเฉพาะเมื่อมีข้อมูล staff) ---
+    if (staffStats && Object.keys(staffStats).length > 0) {
+        const staffEntries = Object.entries(staffStats).sort((a, b) => b[1].dishes - a[1].dishes);
+        html += `<div style="background:white; border-radius:10px; padding:14px 16px; margin-top:16px; border:1px solid #e9ecef;">
+          <div style="font-size:15px; font-weight:700; color:#2c3e50; margin-bottom:10px;">👥 สรุปตามพนักงาน</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">`;
+        staffEntries.forEach(([name, s]) => {
+            html += `<div style="flex:1; min-width:110px; background:#f0fff4; border:1px solid #b2dfdb; border-radius:8px; padding:10px 12px; text-align:center;">
+              <div style="font-size:15px; font-weight:700; color:#1a5276;">👤 ${name}</div>
+              <div style="font-size:20px; font-weight:bold; color:#27ae60; margin:4px 0;">${s.dishes} <span style="font-size:13px;">จาน</span></div>
+              <div style="font-size:12px; color:#888;">${s.tables.size} โต๊ะ</div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    content.innerHTML = html;
+}
+
+// ================= Firebase ประหยัดพื้นที่ =================
+// บีบอัด: รวม orders/completedOrders ที่เก่ากว่า N วัน → dailySnapshots แล้วลบออก
+// *** ไม่แตะ path อื่นนอก BASE_PATH *** ปลอดภัย 100%
+
+function checkFirebaseUsage() {
+    const noteEl = document.getElementById('fbStorageNote');
+    const archBtn = document.getElementById('archiveBtn');
+    if (!noteEl) return;
+
+    // นับ records ใน completedOrders
+    db.ref(BASE_PATH + 'completedOrders').once('value', snap => {
+        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+        if (count > 500) {
+            noteEl.textContent = `⚠️ มี ${count} รายการในประวัติ — แนะนำบีบอัดข้อมูลเก่า`;
+            noteEl.style.color = '#e74c3c';
+            archBtn.style.display = 'inline-block';
+        } else if (count > 200) {
+            noteEl.textContent = `${count} รายการในประวัติ — ปกติดี`;
+            noteEl.style.color = '#e67e22';
+            archBtn.style.display = 'inline-block';
+        } else {
+            noteEl.textContent = `${count} รายการ — ใช้พื้นที่น้อยมาก ✅`;
+            noteEl.style.color = '#27ae60';
+            archBtn.style.display = 'none';
+        }
+    });
+}
+
+function archiveAndClean() {
+    // บีบอัดข้อมูลที่เก่ากว่า 7 วัน เก็บเป็น dailySnapshots/{YYYY-MM-DD}/items
+    // จากนั้นลบ record เหล่านั้นออกจาก completedOrders
+    // orders ที่ยังค้างอยู่ไม่แตะ
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    const cutoffISO = cutoff.toISOString();
+
+    if (!confirm(`บีบอัดข้อมูล completedOrders ที่เสร็จก่อน ${cutoff.toLocaleDateString('th-TH')} ใช่ไหมครับ?\n(ข้อมูลจะถูกรวมเป็น snapshot รายวัน ยังดูใน "สรุปยอด" ได้ปกติ)`)) return;
+
+    const archBtn = document.getElementById('archiveBtn');
+    archBtn.textContent = '⏳ กำลังบีบอัด...';
+    archBtn.disabled = true;
+
+    db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').endAt(cutoffISO).once('value', snap => {
+        if (!snap.exists()) {
+            alert('ไม่มีข้อมูลเก่าที่ต้องบีบอัดครับ');
+            archBtn.textContent = '🗜️ บีบอัดข้อมูลเก่า (ประหยัดพื้นที่)';
+            archBtn.disabled = false;
+            return;
+        }
+
+        const records = snap.val();
+        // จัดกลุ่มตามวัน
+        const byDay = {};
+        Object.entries(records).forEach(([key, o]) => {
+            const day = (o.timestamp || o.completedAt || '').slice(0, 10);
+            if (!day) return;
+            if (!byDay[day]) byDay[day] = { items: {}, count: 0 };
+            const itemKey = o.item + (o.comment ? '__' + o.comment : '');
+            byDay[day].items[itemKey] = (byDay[day].items[itemKey] || 0) + (o.quantity || 1);
+            byDay[day].count++;
+        });
+
+        // เขียน snapshots ทีละวัน แล้วลบ records เดิม
+        const updates = {};
+        Object.entries(byDay).forEach(([day, data]) => {
+            // merge กับ snapshot ที่มีอยู่แล้ว (ถ้ามี)
+            updates[BASE_PATH + 'dailySnapshots/' + day] = { items: data.items, archivedAt: new Date().toISOString() };
+        });
+        // ลบ records เหล่านี้
+        Object.keys(records).forEach(key => { updates[BASE_PATH + 'completedOrders/' + key] = null; });
+
+        db.ref().update(updates).then(() => {
+            const total = Object.keys(records).length;
+            alert(`✅ บีบอัดสำเร็จ! ลบ ${total} รายการ → เก็บเป็น snapshot ${Object.keys(byDay).length} วัน`);
+            archBtn.textContent = '🗜️ บีบอัดข้อมูลเก่า (ประหยัดพื้นที่)';
+            archBtn.disabled = false;
+            checkFirebaseUsage();
+        }).catch(err => {
+            alert('เกิดข้อผิดพลาด: ' + err.message);
+            archBtn.textContent = '🗜️ บีบอัดข้อมูลเก่า (ประหยัดพื้นที่)';
+            archBtn.disabled = false;
+        });
+    });
+}
+// ================= จบระบบสรุปยอดรายวัน (v5) =================
+
+
+// ================= ระบบจัดการเมนู (Admin) =================
+
+// โหลด menuCategories จาก Firebase (ถ้ายังไม่มี → migrate จาก hardcode)
+function loadMenuCategoriesFromFirebase() {
+    db.ref(BASE_PATH + 'menuConfig').once('value', snap => {
+        if (snap.exists()) {
+            // โหลดจาก Firebase
+            const raw = snap.val();
+            // raw = { catOrder: [...], cats: { ชื่อหมวด: { order: N, items: { 0: 'เมนู', ... } } } }
+            menuCategories = {};
+            const catOrder = raw.catOrder || Object.keys(raw.cats || {});
+            catOrder.forEach(cat => {
+                if (raw.cats && raw.cats[cat]) {
+                    const itemsRaw = raw.cats[cat].items || {};
+                    // items เก็บเป็น array-like object { "0": "เมนู1", "1": "เมนู2" }
+                    const items = Object.values(itemsRaw);
+                    menuCategories[cat] = items;
+                }
+            });
+        } else {
+            // ยังไม่มีใน Firebase → migrate เมนูเดิม (hardcode) ขึ้น Firebase
+            migrateMenuToFirebase();
+        }
+        createCategoryButtons();
+    });
+}
+
+// Migrate เมนู hardcode → Firebase (ทำครั้งเดียว)
+function migrateMenuToFirebase() {
+    const cats = {};
+    const catOrder = Object.keys(menuCategories);
+    catOrder.forEach((cat, i) => {
+        const itemsObj = {};
+        menuCategories[cat].forEach((item, j) => { itemsObj[j] = item; });
+        cats[cat] = { order: i, items: itemsObj };
+    });
+    db.ref(BASE_PATH + 'menuConfig').set({ catOrder, cats });
+}
+
+// Save menuCategories back to Firebase
+function saveMenuConfigToFirebase(callback) {
+    const cats = {};
+    const catOrder = Object.keys(menuCategories);
+    catOrder.forEach((cat, i) => {
+        const itemsObj = {};
+        (menuCategories[cat] || []).forEach((item, j) => { itemsObj[j] = item; });
+        cats[cat] = { order: i, items: itemsObj };
+    });
+    db.ref(BASE_PATH + 'menuConfig').set({ catOrder, cats }).then(() => {
+        mmShowSaveStatus('✅ บันทึกแล้ว');
+        if (callback) callback();
+    }).catch(() => mmShowSaveStatus('❌ บันทึกไม่สำเร็จ'));
+}
+
+function mmShowSaveStatus(msg) {
+    const el = document.getElementById('mmSaveStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = msg.startsWith('✅') ? '#27ae60' : '#e74c3c';
+    setTimeout(() => { el.textContent = ''; }, 2500);
+}
+
+// ---- Open / Close ----
+function openMenuManager() {
+    document.getElementById('menuManagerModal').style.display = 'block';
+    mmSetTab('add');
+}
+function closeMenuManager() {
+    document.getElementById('menuManagerModal').style.display = 'none';
+}
+
+let mmCurrentTab = 'add';
+function mmSetTab(tab) {
+    mmCurrentTab = tab;
+    ['add','chef','cats','menus','nb'].forEach(t => {
+        const btn = document.getElementById('mmTab' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (btn) btn.className = 'mm-tab' + (t === tab ? ' mm-tab-active' : '');
+        const panel = document.getElementById('mmPanel' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (panel) panel.style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'add')   mmRenderAddTab();
+    if (tab === 'chef')  mmRenderChefCards();
+    if (tab === 'cats')  mmRenderCatList();
+    if (tab === 'menus') mmRenderCatSelectAndMenus();
+    if (tab === 'nb')    mmRenderNbTab();
+}
+
+// ---- หมวดหมู่ ----
+function mmRenderCatList() {
+    const list = document.getElementById('mmCatList');
+    const cats = Object.keys(menuCategories);
+    if (cats.length === 0) {
+        list.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px;">ยังไม่มีหมวดหมู่ เพิ่มหมวดได้เลยครับ</p>';
+        return;
+    }
+    list.innerHTML = '';
+    cats.forEach((cat, i) => {
+        const row = document.createElement('div');
+        row.className = 'mm-cat-row';
+        row.setAttribute('draggable', 'true');
+        row.dataset.index = i;
+        row.dataset.type = 'cat';
+        row.innerHTML = `
+            <span class="mm-drag-handle" title="ลากเพื่อเรียงลำดับ">⠿</span>
+            <span style="flex:1; font-size:17px; font-weight:600;">${cat}</span>
+            <span style="font-size:13px; color:#aaa;">${(menuCategories[cat]||[]).length} เมนู</span>
+            <button class="mm-order-btn" onclick="mmMoveCat(${i},-1)" title="ขึ้น">▲</button>
+            <button class="mm-order-btn" onclick="mmMoveCat(${i}, 1)" title="ลง">▼</button>
+            <button class="mm-del-btn" onclick="mmDeleteCat('${cat.replace(/'/g,"\'")}',${i})" title="ลบหมวด">🗑</button>`;
+        mmBindDrag(row, 'cat', i);
+        list.appendChild(row);
+    });
+}
+
+function mmAddCategory() {
+    const input = document.getElementById('mmNewCatInput');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    if (menuCategories[name] !== undefined) { alert('มีหมวดนี้อยู่แล้วครับ'); return; }
+    menuCategories[name] = [];
+    input.value = '';
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderCatList(); });
+}
+
+function mmMoveCat(i, dir) {
+    const cats = Object.keys(menuCategories);
+    const j = i + dir;
+    if (j < 0 || j >= cats.length) return;
+    // swap
+    const newCats = {};
+    cats.splice(i, 1);
+    cats.splice(j, 0, Object.keys(menuCategories)[i] || cats[i]);
+    // rebuild from original
+    const orig = menuCategories;
+    const allCats = Object.keys(orig);
+    const swapped = [...allCats];
+    [swapped[i], swapped[j]] = [swapped[j], swapped[i]];
+    const newObj = {};
+    swapped.forEach(k => { newObj[k] = orig[k]; });
+    menuCategories = newObj;
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderCatList(); });
+}
+
+function mmDeleteCat(cat, i) {
+    const count = (menuCategories[cat] || []).length;
+    const msg = count > 0
+        ? `ลบหมวด "${cat}" และเมนูทั้งหมด ${count} รายการ?`
+        : `ลบหมวด "${cat}"?`;
+    if (!confirm(msg)) return;
+    delete menuCategories[cat];
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderCatList(); });
+}
+
+// ---- Drag & Drop สำหรับหมวดหมู่ ----
+let mmDragIdx = null;
+let mmDragType = null;
+
+function mmBindDrag(row, type, idx) {
+    row.addEventListener('dragstart', e => {
+        mmDragIdx = idx; mmDragType = type;
+        row.classList.add('mm-row-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => row.classList.remove('mm-row-dragging'));
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('mm-row-dragover'); });
+    row.addEventListener('dragleave', () => row.classList.remove('mm-row-dragover'));
+    row.addEventListener('drop', e => {
+        e.preventDefault();
+        row.classList.remove('mm-row-dragover');
+        const targetIdx = parseInt(row.dataset.index);
+        if (mmDragIdx === null || mmDragIdx === targetIdx) return;
+        if (mmDragType === 'cat') mmDragMoveCat(mmDragIdx, targetIdx);
+        if (mmDragType === 'menu') mmDragMoveMenu(mmDragIdx, targetIdx);
+        mmDragIdx = null;
+    });
+}
+
+function mmDragMoveCat(from, to) {
+    const keys = Object.keys(menuCategories);
+    const moved = keys.splice(from, 1)[0];
+    keys.splice(to, 0, moved);
+    const newObj = {};
+    keys.forEach(k => { newObj[k] = menuCategories[k]; });
+    menuCategories = newObj;
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderCatList(); });
+}
+
+// ---- เมนูในหมวด ----
+function mmRenderCatSelectAndMenus() {
+    const sel = document.getElementById('mmCatSelect');
+    const prev = sel.value;
+    sel.innerHTML = '';
+    Object.keys(menuCategories).forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat; opt.textContent = cat;
+        sel.appendChild(opt);
+    });
+    if (prev && menuCategories[prev]) sel.value = prev;
+    mmRenderMenuList();
+}
+
+function mmRenderMenuList() {
+    const cat = document.getElementById('mmCatSelect').value;
+    const list = document.getElementById('mmMenuList');
+    const items = menuCategories[cat] || [];
+    if (items.length === 0) {
+        list.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px;">ยังไม่มีเมนูในหมวดนี้</p>';
+        return;
+    }
+    list.innerHTML = '';
+    items.forEach((item, i) => {
+        const row = document.createElement('div');
+        row.className = 'mm-menu-row';
+        row.setAttribute('draggable', 'true');
+        row.dataset.index = i;
+        row.dataset.type = 'menu';
+        row.innerHTML = `
+            <span class="mm-drag-handle" title="ลากเพื่อเรียงลำดับ">⠿</span>
+            <span style="flex:1; font-size:16px;">${item}</span>
+            <button class="mm-order-btn" onclick="mmMoveMenu(${i},-1)">▲</button>
+            <button class="mm-order-btn" onclick="mmMoveMenu(${i}, 1)">▼</button>
+            <button class="mm-del-btn" onclick="mmDeleteMenu('${cat.replace(/'/g,"\'")}',${i})" title="ลบเมนู">🗑</button>`;
+        mmBindDrag(row, 'menu', i);
+        list.appendChild(row);
+    });
+}
+
+function mmAddMenuItem() {
+    const cat = document.getElementById('mmCatSelect').value;
+    const input = document.getElementById('mmNewMenuInput');
+    const name = input.value.trim();
+    if (!name || !cat) { input.focus(); return; }
+    if (!menuCategories[cat]) menuCategories[cat] = [];
+    if (menuCategories[cat].includes(name)) { alert('มีเมนูนี้อยู่แล้วในหมวดนี้ครับ'); return; }
+    menuCategories[cat].push(name);
+    input.value = '';
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderMenuList(); });
+}
+
+function mmMoveMenu(i, dir) {
+    const cat = document.getElementById('mmCatSelect').value;
+    const items = menuCategories[cat];
+    const j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    [items[i], items[j]] = [items[j], items[i]];
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderMenuList(); });
+}
+
+function mmDeleteMenu(cat, i) {
+    if (!confirm(`ลบเมนู "${menuCategories[cat][i]}"?`)) return;
+    menuCategories[cat].splice(i, 1);
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderMenuList(); });
+}
+
+function mmDragMoveMenu(from, to) {
+    const cat = document.getElementById('mmCatSelect').value;
+    const items = menuCategories[cat];
+    const moved = items.splice(from, 1)[0];
+    items.splice(to, 0, moved);
+    saveMenuConfigToFirebase(() => { createCategoryButtons(); mmRenderMenuList(); });
+}
+
+
+// ---- Tab: เพิ่มเมนูใหม่ ----
+function mmRenderAddTab() {
+    // populate category select
+    const sel = document.getElementById('mmAddCat');
+    if (sel) sel.innerHTML = Object.keys(menuCategories).map(c => `<option>${c}</option>`).join('');
+    // populate chef checkboxes
+    const box = document.getElementById('mmChefCheckboxes');
+    if (!box) return;
+    box.innerHTML = '';
+    const CHEF_COLORS = { kik:'#007bff', jeab:'#e74c3c', nan:'#27ae60', see:'#8e44ad' };
+    Object.entries(chefMenus).forEach(([id, _]) => {
+        const color = CHEF_COLORS[id] || '#555';
+        const name = { kik:'กิ๊ก', jeab:'เจี๊ยบ', nan:'พลโท', see:'ซี' }[id] || id;
+        const div = document.createElement('div');
+        div.className = 'mm-chef-checkbox';
+        div.id = 'mmck_' + id;
+        div.onclick = () => div.classList.toggle('selected');
+        div.innerHTML = `<span style="color:${color}; font-size:20px;">●</span> ${name}`;
+        box.appendChild(div);
+    });
+}
+
+function mmDoAddNewItem() {
+    const name  = (document.getElementById('mmAddName').value || '').trim();
+    const price = parseFloat(document.getElementById('mmAddPrice').value) || 0;
+    const cat   = document.getElementById('mmAddCat').value;
+    const nonB  = document.getElementById('mmIsNonBatchable').checked;
+    const result = document.getElementById('mmAddResult');
+
+    if (!name) { result.textContent = '❌ ใส่ชื่อเมนูด้วยครับ'; result.style.color = '#e74c3c'; return; }
+    if (!cat)  { result.textContent = '❌ เลือกหมวดหมู่ด้วยครับ'; result.style.color = '#e74c3c'; return; }
+
+    const CHEF_COLORS = { kik:'#007bff', jeab:'#e74c3c', nan:'#27ae60', see:'#8e44ad' };
+    const selectedChefs = Object.keys(chefMenus).filter(id => document.getElementById('mmck_'+id)?.classList.contains('selected'));
+
+    const updates = {};
+
+    // 1. เพิ่มเข้า menuCategories
+    if (menuCategories[cat]) {
+        if (!menuCategories[cat].includes(name)) {
+            menuCategories[cat].push(name);
+            const itemsObj = {};
+            menuCategories[cat].forEach((item, j) => itemsObj[j] = item);
+            updates[BASE_PATH + 'menuConfig/cats/' + cat + '/items'] = itemsObj;
+        }
+    }
+
+    // 2. บันทึกราคา
+    if (price > 0) {
+        menuPrices[name] = price;
+        updates[BASE_PATH + 'menuPrices/' + name] = price;
+    }
+
+    // 3. เพิ่ม keyword ให้แม่ครัวที่เลือก
+    selectedChefs.forEach(chefId => {
+        const kws = [...(chefMenus[chefId] || [])];
+        if (!kws.includes(name)) {
+            kws.push(name);
+            chefMenus[chefId] = kws;
+            const kwObj = {};
+            kws.forEach((k, i) => kwObj[i] = k);
+            updates[BASE_PATH + 'chefConfig/' + chefId + '/keywords'] = kwObj;
+        }
+    });
+
+    // 4. nonBatchable
+    if (nonB && !nonBatchableMenuItems.includes(name)) {
+        nonBatchableMenuItems.push(name);
+        const nbObj = {};
+        nonBatchableMenuItems.forEach((k, i) => nbObj[i] = k);
+        updates[BASE_PATH + 'chefConfig/__nonBatchable__'] = nbObj;
+    }
+
+    db.ref().update(updates).then(() => {
+        result.textContent = `✅ เพิ่ม "${name}" สำเร็จ!`;
+        result.style.color = '#27ae60';
+        document.getElementById('mmAddName').value = '';
+        document.getElementById('mmAddPrice').value = '';
+        document.getElementById('mmIsNonBatchable').checked = false;
+        document.querySelectorAll('.mm-chef-checkbox').forEach(el => el.classList.remove('selected'));
+        mmShowSaveStatus('บันทึกแล้ว ✅');
+        createCategoryButtons();
+    }).catch(e => { result.textContent = '❌ ' + e.message; result.style.color = '#e74c3c'; });
+}
+
+// ---- Tab: มอบหมายแม่ครัว ----
+function mmRenderChefCards() {
+    const container = document.getElementById('mmChefCardsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    const CHEF_COLORS = { kik:'#007bff', jeab:'#e74c3c', nan:'#27ae60', see:'#8e44ad' };
+    const CHEF_NAMES  = { kik:'กิ๊ก', jeab:'เจี๊ยบ', nan:'พลโท', see:'ซี' };
+    Object.entries(chefMenus).forEach(([chefId, kws]) => {
+        const color = CHEF_COLORS[chefId] || '#555';
+        const name  = CHEF_NAMES[chefId] || chefId;
+        const card = document.createElement('div');
+        card.className = 'mm-chef-card';
+        const tagsHtml = kws.map((kw, i) => `
+          <span class="mm-chef-keyword-tag">
+            ${kw}
+            <button onclick="mmRemoveChefKw('${chefId}',${i})" title="ลบ">✕</button>
+          </span>`).join('');
+        card.innerHTML = `
+          <div class="mm-chef-card-header" style="background:${color};">
+            <span>${name}</span>
+            <span style="font-size:14px; opacity:0.8;">${kws.length} คีย์เวิร์ด</span>
+          </div>
+          <div class="mm-chef-keyword-list">${tagsHtml || '<span style="color:#aaa;font-size:14px;">ยังไม่มีคีย์เวิร์ด</span>'}</div>
+          <div class="mm-chef-add-kw">
+            <input id="mmkwInput_${chefId}" class="mm-chef-kw-input" type="text" placeholder="เพิ่มคีย์เวิร์ด..." maxlength="30"
+              onkeydown="if(event.key==='Enter') mmAddChefKw('${chefId}')">
+            <button class="mm-chef-kw-btn" style="background:${color};" onclick="mmAddChefKw('${chefId}')">+</button>
+          </div>`;
+        container.appendChild(card);
+    });
+}
+
+function mmAddChefKw(chefId) {
+    const input = document.getElementById('mmkwInput_' + chefId);
+    const kw = input.value.trim();
+    if (!kw) return;
+    const kws = chefMenus[chefId] || [];
+    if (kws.includes(kw)) { input.value = ''; return; }
+    kws.push(kw);
+    chefMenus[chefId] = kws;
+    const kwObj = {};
+    kws.forEach((k, i) => kwObj[i] = k);
+    db.ref(BASE_PATH + 'chefConfig/' + chefId + '/keywords').set(kwObj).then(() => {
+        mmShowSaveStatus('บันทึกแล้ว ✅');
+        mmRenderChefCards();
+    });
+    input.value = '';
+}
+
+function mmRemoveChefKw(chefId, idx) {
+    const kws = chefMenus[chefId] || [];
+    kws.splice(idx, 1);
+    chefMenus[chefId] = kws;
+    const kwObj = {};
+    kws.forEach((k, i) => kwObj[i] = k);
+    db.ref(BASE_PATH + 'chefConfig/' + chefId + '/keywords').set(kwObj).then(() => {
+        mmShowSaveStatus('บันทึกแล้ว ✅');
+        mmRenderChefCards();
+    });
+}
+
+// ---- Tab: สั่งแยก/รวม (nonBatchable) ----
+let mmNbCurrentFilter = 'all';
+
+function mmNbSetFilter(f) {
+    mmNbCurrentFilter = f;
+    const map = { all:'mmNbBtnAll', split:'mmNbBtnSplit', merge:'mmNbBtnMerge' };
+    Object.entries(map).forEach(([k, btnId]) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        const isActive = k === f;
+        btn.style.background = isActive ? '#e67e22' : '#f8f9fa';
+        btn.style.color = isActive ? 'white' : '#555';
+        btn.style.borderColor = isActive ? '#e67e22' : '#ddd';
+    });
+    mmRenderNbTab();
+}
+
+function mmRenderNbTab() {
+    const q = (document.getElementById('mmNbSearch')?.value || '').trim();
+    const allMenus = [...new Set(Object.values(menuCategories).flat())].sort((a, b) => a.localeCompare(b, 'th'));
+
+    let filtered = allMenus;
+    if (q) filtered = filtered.filter(m => m.includes(q));
+    if (mmNbCurrentFilter === 'split') filtered = filtered.filter(m => nonBatchableMenuItems.includes(m));
+    if (mmNbCurrentFilter === 'merge') filtered = filtered.filter(m => !nonBatchableMenuItems.includes(m));
+
+    const container = document.getElementById('mmNbList');
+    if (!container) return;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<p style="color:#aaa; text-align:center; padding:24px; font-size:14px;">ไม่พบเมนู</p>';
+        return;
+    }
+
+    const splitCount = allMenus.filter(m => nonBatchableMenuItems.includes(m)).length;
+    const mergeCount = allMenus.length - splitCount;
+
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; padding:8px 14px; background:#f8f9fa; border-bottom:1px solid #eee; font-size:12px; color:#888;">
+        <span>🔴 สั่งแยก: <strong style="color:#e74c3c;">${splitCount}</strong></span>
+        <span>🟢 รวมได้: <strong style="color:#27ae60;">${mergeCount}</strong></span>
+        <span>ทั้งหมด: <strong>${allMenus.length}</strong></span>
+      </div>
+      ${filtered.map(item => {
+          const isSplit = nonBatchableMenuItems.includes(item);
+          const safe = item.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          return `<div style="display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid #f0f0f0; background:${isSplit ? '#fff8f5' : 'white'};">
+            <span style="flex:1; font-size:15px; font-weight:${isSplit ? 'bold' : 'normal'}; color:${isSplit ? '#c0392b' : '#2c3e50'};">
+              ${isSplit ? '🔴' : '🟢'} ${item}
+            </span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:13px; color:${isSplit ? '#e74c3c' : '#27ae60'}; font-weight:bold; min-width:28px; text-align:right;">${isSplit ? 'แยก' : 'รวม'}</span>
+              <div onclick="mmToggleNonBatch('${safe}', ${isSplit})"
+                style="width:46px; height:26px; border-radius:13px; background:${isSplit ? '#e74c3c' : '#27ae60'}; position:relative; cursor:pointer; flex-shrink:0; box-shadow:inset 0 1px 3px rgba(0,0,0,0.15);">
+                <div style="width:20px; height:20px; border-radius:50%; background:white; position:absolute; top:3px; ${isSplit ? 'right:3px' : 'left:3px'}; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>
+              </div>
+            </div>
+          </div>`;
+      }).join('')}`;
+}
+
+function mmToggleNonBatch(itemName, currentlySplit) {
+    const statusEl = document.getElementById('mmNbStatus');
+    if (currentlySplit) {
+        nonBatchableMenuItems = nonBatchableMenuItems.filter(x => x !== itemName);
+    } else {
+        if (!nonBatchableMenuItems.includes(itemName)) nonBatchableMenuItems.push(itemName);
+    }
+    const nbObj = {};
+    nonBatchableMenuItems.forEach((k, i) => nbObj[i] = k);
+    db.ref(BASE_PATH + 'chefConfig/__nonBatchable__').set(nbObj).then(() => {
+        if (statusEl) {
+            statusEl.style.color = '#27ae60';
+            statusEl.textContent = currentlySplit
+                ? `✅ "${itemName}" → เปลี่ยนเป็น รวมได้แล้ว`
+                : `✅ "${itemName}" → เปลี่ยนเป็น สั่งแยกแล้ว`;
+            setTimeout(() => statusEl.textContent = '', 2500);
+        }
+        mmShowSaveStatus('บันทึกแล้ว ✅');
+        mmRenderNbTab();
+        // อัปเดตหน้าครัวทันที
+        if (orders.length > 0) showTotalOrders();
+    }).catch(e => {
+        if (statusEl) { statusEl.style.color = '#e74c3c'; statusEl.textContent = '❌ ' + e.message; }
+    });
+}
+
+// ================= จบระบบจัดการเมนู =================
+// ================= ระบบ PIN + เจ้าของ =================
+
+let pinBuffer = '';
+let pinTarget = ''; // 'menu' | 'revenue' | 'changepin' | 'dailysummary'
+let menuPrices = {}; // { 'เมนู': 120 }
+
+// --- PIN Session: จำว่าปลดล็อคแล้ว ไม่ต้องใส่ซ้ำ 30 นาที ---
+let pinUnlockedAt = 0;
+const PIN_SESSION_MS = 30 * 60 * 1000; // 30 นาที
+function isPinUnlocked() { return (Date.now() - pinUnlockedAt) < PIN_SESSION_MS; }
+function setPinUnlocked() { pinUnlockedAt = Date.now(); }
+
+// โหลดราคาจาก Firebase ตอน load
+window.addEventListener('load', () => {
+    db.ref(BASE_PATH + 'menuPrices').on('value', snap => {
+        menuPrices = snap.val() || {};
+    });
+    // sync chefMenus จาก Firebase (chefConfig) — ถ้าจอครัว migrate แล้ว จะได้ข้อมูลล่าสุด
+    db.ref(BASE_PATH + 'chefConfig').on('value', snap => {
+        if (!snap.exists()) return;
+        const raw = snap.val();
+        const newChefMenus = {};
+        Object.entries(raw).forEach(([id, val]) => {
+            if (id === '__nonBatchable__') {
+                // ✅ โหลด nonBatchableItems จาก Firebase ด้วย ไม่ใช้ค่า hardcode
+                const nb = Object.values(val);
+                if (nb.length > 0) nonBatchableMenuItems = nb;
+                return;
+            }
+            newChefMenus[id] = Object.values(val.keywords || {});
+        });
+        if (Object.keys(newChefMenus).length > 0) {
+            chefMenus = newChefMenus;
+            // ✅ FIX: อัปเดตหน้าครัวทันทีเมื่อ chefConfig เปลี่ยน (แก้บั๊กเมนูใหม่ไม่ขึ้นครัว)
+            if (orders.length > 0) showTotalOrders();
+        }
+    });
+    // realtime sync เมนู: ถ้าอุปกรณ์อื่นแก้เมนู จะ reload ด้วย
+    db.ref(BASE_PATH + 'menuConfig').on('value', snap => {
+        if (!snap.exists()) return;
+        const raw = snap.val();
+        const newCats = {};
+        const catOrder = raw.catOrder || Object.keys(raw.cats || {});
+        catOrder.forEach(cat => {
+            if (raw.cats && raw.cats[cat]) {
+                newCats[cat] = Object.values(raw.cats[cat].items || {});
+            }
+        });
+        menuCategories = newCats;
+        createCategoryButtons();
+    });
+});
+
+// --- Simple hash (สำหรับป้องกันใน Firebase ไม่ให้เห็น PIN ตรงๆ) ---
+function simpleHash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+    return (h >>> 0).toString(16);
+}
+
+// --- เปิด PIN Modal (ถ้าปลดล็อคไว้แล้วในเซสชันนี้ ข้ามได้เลย) ---
+function openOwnerPIN(target) {
+    pinTarget = target;
+    // ถ้าเคยใส่ PIN ถูกในรอบ 30 นาทีที่ผ่านมา → เปิดได้เลยไม่ต้องกดซ้ำ
+    if (isPinUnlocked() && target !== 'changepin') {
+        dispatchPinTarget(target);
+        return;
+    }
+    pinBuffer = '';
+    updatePinDots();
+    document.getElementById('pinError').textContent = '';
+    document.getElementById('pinModal').style.display = 'flex';
+    // ถ้ายังไม่มี PIN ใน Firebase ให้เปิดหน้าตั้ง PIN แทน
+    db.ref(BASE_PATH + 'ownerPin').once('value', snap => {
+        if (!snap.exists() && target !== 'changepin') {
+            document.getElementById('pinModal').style.display = 'none';
+            document.getElementById('pinModalSubtitle').textContent = 'ยังไม่มี PIN — ตั้งรหัสก่อนใช้งาน';
+            openChangePin();
+        }
+    });
+}
+
+function dispatchPinTarget(target) {
+    if (target === 'menu') openOwnerMenu();
+    else if (target === 'revenue') openRevenue();
+    else if (target === 'changepin') openChangePin();
+    else if (target === 'dailysummary') openDailySummary();
+}
+
+function closePinModal() {
+    document.getElementById('pinModal').style.display = 'none';
+    pinBuffer = '';
+}
+
+function updatePinDots() {
+    document.querySelectorAll('.pin-dot').forEach((d, i) => {
+        d.classList.toggle('filled', i < pinBuffer.length);
+    });
+}
+
+function pinKey(k) {
+    if (k === 'clear') { pinBuffer = ''; updatePinDots(); return; }
+    if (k === 'back') { pinBuffer = pinBuffer.slice(0, -1); updatePinDots(); return; }
+    if (pinBuffer.length >= 4) return;
+    pinBuffer += k;
+    updatePinDots();
+    if (pinBuffer.length === 4) setTimeout(checkPin, 120);
+}
+
+function checkPin() {
+    const entered = simpleHash(pinBuffer);
+    db.ref(BASE_PATH + 'ownerPin').once('value', snap => {
+        const stored = snap.val();
+        if (!stored || entered === stored) {
+            document.getElementById('pinModal').style.display = 'none';
+            pinBuffer = '';
+            setPinUnlocked(); // จำว่าปลดล็อคแล้ว
+            dispatchPinTarget(pinTarget);
+        } else {
+            document.getElementById('pinError').textContent = '❌ PIN ไม่ถูกต้อง ลองใหม่';
+            pinBuffer = '';
+            updatePinDots();
+            const modal = document.querySelector('#pinModal > div');
+            modal.style.animation = 'shake 0.3s';
+            setTimeout(() => modal.style.animation = '', 400);
+        }
+    });
+}
+
+// --- เมนูเจ้าของ ---
+function openOwnerMenu() { document.getElementById('ownerMenuModal').style.display = 'flex'; }
+function closeOwnerMenu() { document.getElementById('ownerMenuModal').style.display = 'none'; }
+
+// --- ตั้งราคา ---
+function openPriceSetting() {
+    document.getElementById('priceSettingModal').style.display = 'block';
+    renderPriceList();
+}
+function closePriceSetting() { document.getElementById('priceSettingModal').style.display = 'none'; }
+
+function renderPriceList(filter = '') {
+    const container = document.getElementById('priceListContainer');
+    const allMenus = Object.values(menuCategories).flat();
+    const unique = [...new Set(allMenus)];
+    const filtered = filter ? unique.filter(m => m.includes(filter)) : unique;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">ไม่พบเมนู</p>';
+        return;
+    }
+    container.innerHTML = filtered.map(item => `
+        <div class="price-row">
+            <span>${item}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <input class="price-input" id="price_${CSS.escape(item)}" type="number" min="0" step="1" placeholder="0" value="${menuPrices[item] || ''}">
+                <span style="color:#888;font-size:14px;">฿</span>
+            </div>
+        </div>`).join('');
+}
+
+function filterPriceList() {
+    const q = document.getElementById('priceSearchInput').value.trim();
+    renderPriceList(q);
+}
+
+function savePrices() {
+    const allMenus = [...new Set(Object.values(menuCategories).flat())];
+    const newPrices = {};
+    allMenus.forEach(item => {
+        const el = document.getElementById('price_' + CSS.escape(item));
+        if (el) {
+            const v = parseFloat(el.value);
+            if (!isNaN(v) && v > 0) newPrices[item] = v;
+        }
+    });
+    db.ref(BASE_PATH + 'menuPrices').set(newPrices).then(() => {
+        const btn = document.querySelector('#priceSettingModal button[onclick="savePrices()"]');
+        btn.textContent = '✅ บันทึกแล้ว!';
+        setTimeout(() => btn.textContent = '💾 บันทึกทั้งหมด', 2000);
+    });
+}
+
+// --- สรุปยอดเงิน (v6: tabs + UI ใหม่) ---
+let revenueMode = 'day';
+
+function openRevenue() {
+    document.getElementById('revenueModal').style.display = 'block';
+    setRevenueMode('day');
+}
+function closeRevenue() { document.getElementById('revenueModal').style.display = 'none'; }
+
+function setRevenueMode(mode) {
+    revenueMode = mode;
+    ['day','week','month','range'].forEach(m => {
+        const t = document.getElementById('revTab' + m.charAt(0).toUpperCase() + m.slice(1));
+        if (t) t.className = 'summary-tab' + (m === mode ? ' summary-tab-rev-active' : '');
+    });
+    document.getElementById('revCtrlDay').style.display   = (mode === 'day')   ? 'flex' : 'none';
+    document.getElementById('revCtrlRange').style.display = (mode === 'range') ? 'flex' : 'none';
+    if (mode === 'day') {
+        if (!document.getElementById('revenueDatePicker').value) setRevenueToday();
+        else runRevenueLoad();
+    } else if (mode === 'week' || mode === 'month') {
+        runRevenueLoad();
+    }
+}
+
+function shiftRevDay(delta) {
+    const picker = document.getElementById('revenueDatePicker');
+    if (!picker.value) { setRevenueToday(); return; }
+    const d = new Date(picker.value + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    picker.value = d.toISOString().slice(0, 10);
+    runRevenueLoad();
+}
+
+function setRevenueToday() {
+    const today = new Date();
+    document.getElementById('revenueDatePicker').value = today.toISOString().slice(0, 10);
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 6);
+    document.getElementById('revRangeStart').value = weekAgo.toISOString().slice(0, 10);
+    document.getElementById('revRangeEnd').value   = today.toISOString().slice(0, 10);
+    runRevenueLoad();
+}
+
+function getRevenueDateRange() {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    if (revenueMode === 'day') {
+        const d = document.getElementById('revenueDatePicker').value || todayStr;
+        return { start: d + 'T00:00:00', end: d + 'T23:59:59', label: formatThaiDate(d), days: 1 };
+    }
+    if (revenueMode === 'week') {
+        const now = new Date(); const dow = now.getDay();
+        const mon = new Date(now); mon.setDate(now.getDate() - ((dow + 6) % 7));
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        const s = mon.toISOString().slice(0,10), e = sun.toISOString().slice(0,10);
+        return { start: s+'T00:00:00', end: e+'T23:59:59', label: `${formatThaiDate(s)} — ${formatThaiDate(e)}`, days: 7 };
+    }
+    if (revenueMode === 'month') {
+        const now = new Date(); const y = now.getFullYear(), m = now.getMonth();
+        const s = `${y}-${String(m+1).padStart(2,'0')}-01`;
+        const lastDay = new Date(y, m+1, 0).getDate();
+        const e = `${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+        return { start: s+'T00:00:00', end: e+'T23:59:59', label: now.toLocaleDateString('th-TH',{month:'long',year:'numeric'}), days: lastDay };
+    }
+    if (revenueMode === 'range') {
+        const s = document.getElementById('revRangeStart').value;
+        const e = document.getElementById('revRangeEnd').value;
+        if (!s || !e) return null;
+        const days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+        return { start: s+'T00:00:00', end: e+'T23:59:59', label: `${formatThaiDate(s)} — ${formatThaiDate(e)}`, days };
+    }
+    return null;
+}
+
+function runRevenueLoad() {
+    const range = getRevenueDateRange();
+    if (!range) return;
+    const content = document.getElementById('revenueContent');
+    content.innerHTML = '<p style="color:#888; text-align:center; padding:30px 0; font-size:16px;">⏳ กำลังโหลด...</p>';
+
+    Promise.all([
+        db.ref(BASE_PATH + 'orders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
+        db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
+        db.ref(BASE_PATH + 'dailySnapshots').orderByKey().startAt(range.start.slice(0,10)).endAt(range.end.slice(0,10)).once('value')
+    ]).then(([ordersSnap, completedSnap, snapshotsSnap]) => {
+        const tally = {};
+
+        // รวมจาก dailySnapshots
+        if (snapshotsSnap.exists()) {
+            Object.values(snapshotsSnap.val()).forEach(snap => {
+                if (snap.items) Object.entries(snap.items).forEach(([rawKey, qty]) => {
+                    // rawKey อาจมี __ เป็น separator ของ comment — ใช้เฉพาะชื่อเมนู
+                    const item = rawKey.split('__')[0];
+                    tally[item] = (tally[item] || 0) + qty;
+                });
+            });
+        }
+        // รวมจาก raw orders
+        function addSnap(snap) {
+            if (!snap.exists()) return;
+            Object.values(snap.val()).forEach(o => {
+                tally[o.item] = (tally[o.item] || 0) + (o.quantity || 1);
+            });
+        }
+        addSnap(ordersSnap); addSnap(completedSnap);
+
+        const entries = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+        if (entries.length === 0) {
+            content.innerHTML = '<p style="color:#e74c3c; font-size:18px; text-align:center; padding:30px;">ไม่พบออเดอร์ในช่วงเวลาที่เลือกครับ</p>';
+            return;
+        }
+
+        let totalRevenue = 0, totalDishes = 0, unknownDishes = 0;
+        const rows = entries.map(([item, qty]) => {
+            const price = menuPrices[item] || 0;
+            const subtotal = price * qty;
+            totalRevenue += subtotal; totalDishes += qty;
+            if (!price) unknownDishes += qty;
+            return { item, qty, price, subtotal };
+        });
+
+        const avgRevPerDay = range.days > 1 ? Math.round(totalRevenue / range.days).toLocaleString('th-TH') : null;
+
+        // Stat Cards
+        let html = `<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+          <div class="summary-stat-card" style="background:linear-gradient(135deg,#1a3a1a,#1e5631);">
+            <div class="summary-stat-label">📅 ช่วงเวลา</div>
+            <div style="font-size:13px; font-weight:600; margin-top:4px; line-height:1.3;">${range.label}</div>
+          </div>
+          <div class="summary-stat-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71);">
+            <div class="summary-stat-label">ยอดขายรวม</div>
+            <div class="summary-stat-value">${totalRevenue.toLocaleString('th-TH')}</div>
+            <div class="summary-stat-unit">บาท</div>
+          </div>
+          <div class="summary-stat-card" style="background:linear-gradient(135deg,#2980b9,#3498db);">
+            <div class="summary-stat-label">จานทั้งหมด</div>
+            <div class="summary-stat-value">${totalDishes}</div>
+            <div class="summary-stat-unit">จาน</div>
+          </div>
+          ${avgRevPerDay ? `<div class="summary-stat-card" style="background:linear-gradient(135deg,#e67e22,#f39c12);">
+            <div class="summary-stat-label">รายได้เฉลี่ย/วัน</div>
+            <div class="summary-stat-value" style="font-size:20px;">${avgRevPerDay}</div>
+            <div class="summary-stat-unit">บาท/วัน</div>
+          </div>` : ''}
+        </div>`;
+
+        if (unknownDishes > 0) {
+            html += `<div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:14px; color:#856404;">
+              ⚠️ มี <strong>${unknownDishes} จาน</strong> ที่ยังไม่ได้ตั้งราคา — ไปตั้งราคาได้ที่ <strong>ตั้งค่าระบบ → ตั้งราคาเมนู</strong>
+            </div>`;
+        }
+
+        html += `<div style="background:white; border-radius:10px; overflow:hidden; border:1px solid #e9ecef;">
+          <table class="rev-table">
+            <thead><tr>
+              <th>เมนู</th><th>จาน</th><th>ราคา/จาน</th><th>รวม</th>
+            </tr></thead><tbody>`;
+
+        rows.forEach(({ item, qty, price, subtotal }) => {
+            const noPrice = !price;
+            html += `<tr style="${noPrice ? 'opacity:0.55;' : ''}">
+              <td>${item}${noPrice ? ' <span style="color:#e67e22;font-size:12px;">(ไม่มีราคา)</span>' : ''}</td>
+              <td>${qty}</td>
+              <td>${price ? price.toLocaleString('th-TH') + ' ฿' : '—'}</td>
+              <td>${subtotal ? subtotal.toLocaleString('th-TH') + ' ฿' : '—'}</td>
+            </tr>`;
+        });
+
+        html += `</tbody><tfoot><tr>
+          <td colspan="3" style="text-align:right;">ยอดรวมทั้งหมด</td>
+          <td style="text-align:right;">${totalRevenue.toLocaleString('th-TH')} ฿</td>
+        </tr></tfoot></table></div>`;
+
+        content.innerHTML = html;
+    });
+}
+
+// --- เปลี่ยน PIN ---
+function openChangePin() {
+    document.getElementById('newPin1').value = '';
+    document.getElementById('newPin2').value = '';
+    document.getElementById('changePinError').textContent = '';
+    document.getElementById('changePinModal').style.display = 'flex';
+}
+function closeChangePin() { document.getElementById('changePinModal').style.display = 'none'; }
+
+function saveNewPin() {
+    const p1 = document.getElementById('newPin1').value.trim();
+    const p2 = document.getElementById('newPin2').value.trim();
+    const errEl = document.getElementById('changePinError');
+    if (!/^\d{4}$/.test(p1)) { errEl.textContent = '❌ ต้องเป็นตัวเลข 4 หลัก'; return; }
+    if (p1 !== p2) { errEl.textContent = '❌ PIN ทั้งสองไม่ตรงกัน'; return; }
+    db.ref(BASE_PATH + 'ownerPin').set(simpleHash(p1)).then(() => {
+        errEl.style.color = '#27ae60';
+        errEl.textContent = '✅ บันทึก PIN สำเร็จ!';
+        setTimeout(() => { closeChangePin(); }, 1200);
+    });
+}
+
+// Animation เขย่า
+const shakeStyle = document.createElement('style');
+shakeStyle.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }`;
+document.head.appendChild(shakeStyle);
+
+// ================= จบระบบ PIN + เจ้าของ =================
 </script>
 </body>
 </html>
