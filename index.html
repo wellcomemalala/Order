@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>รับออเดอร์</title>
+  <title>นักซิ่ง</title>
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -992,7 +992,73 @@ function toggleStockMode() {
     btn.className = isStockMode ? "order-button stock-button stock-mode-active" : "order-button stock-button";
 }
 
-function clearCompletedOrders() { if(confirm('ล้างรายการที่เสร็จแล้ว?')) db.ref(BASE_PATH + 'completedOrders').remove(); }
+function clearCompletedOrders() {
+    if (!confirm('ล้างรายการที่เสร็จแล้ว?\n(ข้อมูลจะถูกบันทึกไว้ในสรุปยอดหลังบ้านก่อนล้าง)')) return;
+
+    db.ref(BASE_PATH + 'completedOrders').once('value').then(snap => {
+        if (!snap.exists()) {
+            db.ref(BASE_PATH + 'completedOrders').remove();
+            return;
+        }
+
+        const orders = Object.values(snap.val());
+
+        // จัดกลุ่มออเดอร์ตามวัน (YYYY-MM-DD)
+        const byDate = {};
+        orders.forEach(o => {
+            const ts = o.completedAt || o.timestamp || new Date().toISOString();
+            const dateKey = ts.slice(0, 10);
+            if (!byDate[dateKey]) byDate[dateKey] = {};
+            const itemKey = o.item + (o.comment ? '__' + o.comment : '');
+            byDate[dateKey][itemKey] = (byDate[dateKey][itemKey] || 0) + (o.quantity || 1);
+        });
+
+        // บันทึกทีละวันแบบ merge — รวม items + priceSnapshot + totalRevenue
+        const savePromises = Object.entries(byDate).map(([date, newItems]) => {
+            return db.ref(BASE_PATH + 'dailySnapshots/' + date).once('value').then(existSnap => {
+                const existing = existSnap.val() || {};
+                const existingItems = existing.items || {};
+
+                // รวมจำนวนจาน
+                Object.entries(newItems).forEach(([key, qty]) => {
+                    existingItems[key] = (existingItems[key] || 0) + qty;
+                });
+
+                // ---- ล็อคราคา ณ วันนี้ (priceSnapshot) ----
+                // รวม priceSnapshot ที่มีอยู่เดิม + ราคาปัจจุบัน
+                const existingPrices = existing.priceSnapshot || {};
+                const allItemKeys = Object.keys(existingItems);
+                allItemKeys.forEach(key => {
+                    const menuName = key.split('__')[0]; // ตัด comment ออก
+                    if (!existingPrices[menuName] && menuPrices[menuName]) {
+                        existingPrices[menuName] = menuPrices[menuName];
+                    }
+                });
+
+                // ---- คำนวณ totalRevenue จาก items × priceSnapshot ----
+                let totalRevenue = 0;
+                Object.entries(existingItems).forEach(([key, qty]) => {
+                    const menuName = key.split('__')[0];
+                    const price = existingPrices[menuName] || menuPrices[menuName] || 0;
+                    totalRevenue += price * qty;
+                });
+
+                return db.ref(BASE_PATH + 'dailySnapshots/' + date).set({
+                    items: existingItems,
+                    priceSnapshot: existingPrices,
+                    totalRevenue: totalRevenue
+                });
+            });
+        });
+
+        Promise.all(savePromises).then(() => {
+            db.ref(BASE_PATH + 'completedOrders').remove();
+            console.log('✅ บันทึก snapshot (พร้อมราคา) เรียบร้อย แล้วล้าง completedOrders');
+        }).catch(err => {
+            alert('เกิดข้อผิดพลาดในการบันทึก snapshot: ' + err.message);
+        });
+    });
+}
 
 // ================= ระบบชื่อพนักงาน =================
 let currentStaffName = '';
@@ -1311,17 +1377,17 @@ function runSummaryLoad() {
     const content = document.getElementById('summaryContent');
     content.innerHTML = '<p style="color:#888; text-align:center; padding:30px 0; font-size:16px;">⏳ กำลังโหลด...</p>';
 
-    // ดึง daily snapshots ก่อน แล้วค่อย fallback ไป raw orders
     Promise.all([
         db.ref(BASE_PATH + 'orders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
         db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
         db.ref(BASE_PATH + 'dailySnapshots').orderByKey().startAt(range.start.slice(0,10)).endAt(range.end.slice(0,10)).once('value')
     ]).then(([ordersSnap, completedSnap, snapshotsSnap]) => {
         const allItems = {};
-        const staffStats = {}; // { staffName: { tables: Set, dishes: number } }
+        const staffStats = {};
         let totalFromSnap = 0;
+        const lockedPrices = {}; // ราคาที่ล็อคไว้ตอนกดล้าง
 
-        // --- รวมจาก dailySnapshots (ข้อมูลที่บีบอัดแล้ว) ---
+        // --- รวมจาก dailySnapshots ---
         if (snapshotsSnap.exists()) {
             Object.entries(snapshotsSnap.val()).forEach(([date, snap]) => {
                 if (snap.items) {
@@ -1330,16 +1396,21 @@ function runSummaryLoad() {
                         totalFromSnap += qty;
                     });
                 }
+                // เก็บราคาที่ล็อคไว้
+                if (snap.priceSnapshot) {
+                    Object.entries(snap.priceSnapshot).forEach(([menuName, price]) => {
+                        if (!lockedPrices[menuName]) lockedPrices[menuName] = price;
+                    });
+                }
             });
         }
 
-        // --- รวมจาก raw orders (วันที่ยังไม่ได้บีบอัด) ---
+        // --- รวมจาก raw orders ---
         function tally(snap) {
             if (!snap.exists()) return;
             Object.values(snap.val()).forEach(o => {
                 const key = o.item + (o.comment ? ' (' + o.comment + ')' : '');
                 allItems[key] = (allItems[key] || 0) + (o.quantity || 1);
-                // เก็บสถิติพนักงาน
                 if (o.staff) {
                     if (!staffStats[o.staff]) staffStats[o.staff] = { tables: new Set(), dishes: 0 };
                     staffStats[o.staff].tables.add(o.table);
@@ -1350,13 +1421,14 @@ function runSummaryLoad() {
         tally(ordersSnap);
         tally(completedSnap);
 
-        renderSummary(allItems, range, staffStats);
+        renderSummary(allItems, range, staffStats, lockedPrices);
     }).catch(err => {
         content.innerHTML = '<p style="color:red; padding:20px;">❌ เกิดข้อผิดพลาด: ' + err.message + '</p>';
     });
 }
 
-function renderSummary(allItems, range, staffStats) {
+function renderSummary(allItems, range, staffStats, lockedPrices) {
+    lockedPrices = lockedPrices || {};
     const content = document.getElementById('summaryContent');
     const entries = Object.entries(allItems).sort((a, b) => b[1] - a[1]);
     const total   = entries.reduce((s, [, q]) => s + q, 0);
@@ -1366,9 +1438,15 @@ function renderSummary(allItems, range, staffStats) {
         return;
     }
 
+    // คำนวณยอดเงินรวม โดยใช้ราคาล็อค → ราคาปัจจุบัน
+    let totalRevenue = 0;
+    entries.forEach(([name, qty]) => {
+        const menuName = name.split('__')[0].split(' (')[0]; // ตัด comment ออก
+        const price = lockedPrices[menuName] || menuPrices[menuName] || 0;
+        totalRevenue += price * qty;
+    });
+
     const avgPerDay = range.days > 1 ? (total / range.days).toFixed(1) : null;
-    const topItem   = entries[0][0];
-    const topQty    = entries[0][1];
     const uniqueMenus = entries.length;
 
     // --- Stat Cards ---
@@ -1392,6 +1470,11 @@ function renderSummary(allItems, range, staffStats) {
         <div class="summary-stat-value">${uniqueMenus}</div>
         <div class="summary-stat-unit">เมนู</div>
       </div>
+      ${totalRevenue > 0 ? `<div class="summary-stat-card" style="background:linear-gradient(135deg,#8e44ad,#9b59b6);">
+        <div class="summary-stat-label">💰 ยอดขายรวม</div>
+        <div class="summary-stat-value" style="font-size:20px;">${totalRevenue.toLocaleString('th-TH')}</div>
+        <div class="summary-stat-unit">บาท</div>
+      </div>` : ''}
     </div>`;
 
     // --- Top 3 ---
@@ -1412,14 +1495,15 @@ function renderSummary(allItems, range, staffStats) {
         html += `</div></div>`;
     }
 
-    // --- Full Table ---
+    // --- Full Table (เพิ่มคอลัมน์ยอดเงิน) ---
     const maxQty = entries[0][1];
     html += `<div style="background:white; border-radius:10px; overflow:hidden; border:1px solid #e9ecef;">
       <table class="summary-table">
         <thead><tr>
-          <th style="width:50%;">เมนู</th>
-          <th style="width:80px;">จาน</th>
+          <th style="width:40%;">เมนู</th>
+          <th style="width:60px;">จาน</th>
           <th>สัดส่วน</th>
+          <th style="width:90px; text-align:right;">ยอดเงิน</th>
         </tr></thead>
         <tbody>`;
 
@@ -1427,6 +1511,12 @@ function renderSummary(allItems, range, staffStats) {
         const pct  = Math.round(qty / total * 100);
         const barW = Math.round(qty / maxQty * 100);
         const barColor = barW === 100 ? '#e74c3c' : barW >= 60 ? '#e67e22' : barW >= 30 ? '#f1c40f' : '#27ae60';
+        const menuName = name.split('__')[0].split(' (')[0];
+        const price = lockedPrices[menuName] || menuPrices[menuName] || 0;
+        const subtotal = price * qty;
+        const priceTag = lockedPrices[menuName]
+            ? `<span style="font-size:9px; color:#27ae60;" title="ราคา ณ วันที่ขาย">🔒</span>`
+            : (menuPrices[menuName] ? `<span style="font-size:9px; color:#e67e22;" title="ราคาปัจจุบัน">⚡</span>` : '');
         html += `<tr>
           <td>${name}</td>
           <td>${qty}</td>
@@ -1438,6 +1528,9 @@ function renderSummary(allItems, range, staffStats) {
             </div>
             <div style="font-size:12px; color:#888; margin-top:2px;">${pct}%</div>
           </td>
+          <td style="text-align:right; font-size:14px; color:${subtotal ? '#27ae60' : '#bbb'}; font-weight:${subtotal ? '700' : 'normal'};">
+            ${subtotal ? subtotal.toLocaleString('th-TH') + ' ฿' + priceTag : '—'}
+          </td>
         </tr>`;
     });
 
@@ -1446,11 +1539,18 @@ function renderSummary(allItems, range, staffStats) {
         <td>รวมทั้งหมด</td>
         <td style="text-align:center;">${total}</td>
         <td>100%</td>
+        <td style="text-align:right; font-weight:700;">${totalRevenue ? totalRevenue.toLocaleString('th-TH') + ' ฿' : '—'}</td>
       </tr></tfoot>
       </table>
     </div>`;
 
-    // --- Staff Summary (แสดงเฉพาะเมื่อมีข้อมูล staff) ---
+    if (totalRevenue > 0) {
+        html += `<div style="margin-top:8px; font-size:12px; color:#888; text-align:right;">
+            🔒 ราคา ณ วันที่ขาย &nbsp;|&nbsp; ⚡ ราคาปัจจุบัน (ยังไม่ได้กดล้าง)
+        </div>`;
+    }
+
+    // --- Staff Summary ---
     if (staffStats && Object.keys(staffStats).length > 0) {
         const staffEntries = Object.entries(staffStats).sort((a, b) => b[1].dishes - a[1].dishes);
         html += `<div style="background:white; border-radius:10px; padding:14px 16px; margin-top:16px; border:1px solid #e9ecef;">
@@ -1535,8 +1635,17 @@ function archiveAndClean() {
         // เขียน snapshots ทีละวัน แล้วลบ records เดิม
         const updates = {};
         Object.entries(byDay).forEach(([day, data]) => {
-            // merge กับ snapshot ที่มีอยู่แล้ว (ถ้ามี)
-            updates[BASE_PATH + 'dailySnapshots/' + day] = { items: data.items, archivedAt: new Date().toISOString() };
+            // รวม priceSnapshot จากราคาปัจจุบัน (เพราะข้อมูลเก่าอาจไม่มีราคาล็อค)
+            const priceSnap = {};
+            Object.keys(data.items).forEach(key => {
+                const menuName = key.split('__')[0];
+                if (menuPrices[menuName]) priceSnap[menuName] = menuPrices[menuName];
+            });
+            updates[BASE_PATH + 'dailySnapshots/' + day] = {
+                items: data.items,
+                priceSnapshot: priceSnap,
+                archivedAt: new Date().toISOString()
+            };
         });
         // ลบ records เหล่านี้
         Object.keys(records).forEach(key => { updates[BASE_PATH + 'completedOrders/' + key] = null; });
@@ -2321,19 +2430,28 @@ function runRevenueLoad() {
         db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
         db.ref(BASE_PATH + 'dailySnapshots').orderByKey().startAt(range.start.slice(0,10)).endAt(range.end.slice(0,10)).once('value')
     ]).then(([ordersSnap, completedSnap, snapshotsSnap]) => {
-        const tally = {};
+        const tally = {};       // { menuName: qty }
+        // lockedPrices: ราคาที่ล็อคไว้ตอนกดล้าง (priceSnapshot) — น่าเชื่อถือที่สุด
+        const lockedPrices = {}; // { menuName: price }
 
-        // รวมจาก dailySnapshots
+        // รวมจาก dailySnapshots (ข้อมูลที่กดล้างแล้ว)
         if (snapshotsSnap.exists()) {
             Object.values(snapshotsSnap.val()).forEach(snap => {
                 if (snap.items) Object.entries(snap.items).forEach(([rawKey, qty]) => {
-                    // rawKey อาจมี __ เป็น separator ของ comment — ใช้เฉพาะชื่อเมนู
                     const item = rawKey.split('__')[0];
                     tally[item] = (tally[item] || 0) + qty;
                 });
+                // ดึง priceSnapshot ที่ล็อคไว้ตอนกดล้าง
+                if (snap.priceSnapshot) {
+                    Object.entries(snap.priceSnapshot).forEach(([menuName, price]) => {
+                        // ถ้ายังไม่มีราคาล็อคสำหรับเมนูนี้ ให้ใช้ราคาเก่าที่สุดที่เจอ
+                        if (!lockedPrices[menuName]) lockedPrices[menuName] = price;
+                    });
+                }
             });
         }
-        // รวมจาก raw orders
+
+        // รวมจาก raw orders (วันที่ยังไม่ได้กดล้าง — ใช้ราคาปัจจุบัน)
         function addSnap(snap) {
             if (!snap.exists()) return;
             Object.values(snap.val()).forEach(o => {
@@ -2350,11 +2468,13 @@ function runRevenueLoad() {
 
         let totalRevenue = 0, totalDishes = 0, unknownDishes = 0;
         const rows = entries.map(([item, qty]) => {
-            const price = menuPrices[item] || 0;
+            // ลำดับความสำคัญ: ราคาล็อค (snapshot) → ราคาปัจจุบัน → 0
+            const price = lockedPrices[item] || menuPrices[item] || 0;
+            const isLocked = !!lockedPrices[item];
             const subtotal = price * qty;
             totalRevenue += subtotal; totalDishes += qty;
             if (!price) unknownDishes += qty;
-            return { item, qty, price, subtotal };
+            return { item, qty, price, subtotal, isLocked };
         });
 
         const avgRevPerDay = range.days > 1 ? Math.round(totalRevenue / range.days).toLocaleString('th-TH') : null;
@@ -2394,12 +2514,16 @@ function runRevenueLoad() {
               <th>เมนู</th><th>จาน</th><th>ราคา/จาน</th><th>รวม</th>
             </tr></thead><tbody>`;
 
-        rows.forEach(({ item, qty, price, subtotal }) => {
+        rows.forEach(({ item, qty, price, subtotal, isLocked }) => {
             const noPrice = !price;
+            // แสดง 🔒 ถ้าราคานี้ถูกล็อคไว้แล้ว (น่าเชื่อถือ) หรือ ⚡ ถ้าใช้ราคาปัจจุบัน
+            const priceTag = isLocked
+                ? `<span style="font-size:10px; color:#27ae60; margin-left:3px;" title="ราคาที่บันทึกไว้ตอนขาย">🔒</span>`
+                : `<span style="font-size:10px; color:#e67e22; margin-left:3px;" title="ใช้ราคาปัจจุบัน">⚡</span>`;
             html += `<tr style="${noPrice ? 'opacity:0.55;' : ''}">
               <td>${item}${noPrice ? ' <span style="color:#e67e22;font-size:12px;">(ไม่มีราคา)</span>' : ''}</td>
               <td>${qty}</td>
-              <td>${price ? price.toLocaleString('th-TH') + ' ฿' : '—'}</td>
+              <td>${price ? price.toLocaleString('th-TH') + ' ฿' + priceTag : '—'}</td>
               <td>${subtotal ? subtotal.toLocaleString('th-TH') + ' ฿' : '—'}</td>
             </tr>`;
         });
@@ -2408,6 +2532,11 @@ function runRevenueLoad() {
           <td colspan="3" style="text-align:right;">ยอดรวมทั้งหมด</td>
           <td style="text-align:right;">${totalRevenue.toLocaleString('th-TH')} ฿</td>
         </tr></tfoot></table></div>`;
+
+        // คำอธิบาย icon
+        html += `<div style="margin-top:10px; font-size:12px; color:#888; text-align:right;">
+            🔒 ราคา ณ วันที่ขาย &nbsp;|&nbsp; ⚡ ราคาปัจจุบัน (ยังไม่ได้กดล้าง)
+        </div>`;
 
         content.innerHTML = html;
     });
