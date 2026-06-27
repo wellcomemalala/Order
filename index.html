@@ -249,6 +249,116 @@
   }
   /* ================= จบสไตล์ Preset Comment ================= */
 
+  /* ================= สไตล์ระบบจองโต๊ะ ================= */
+  #reservationBar {
+    background: linear-gradient(135deg, #2c3e50, #3d5a73);
+    border-radius: 10px;
+    margin: 8px auto 10px auto;
+    padding: 10px 16px;
+    max-width: 1000px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  }
+  #reservationBar .res-label {
+    color: #f0e68c;
+    font-weight: bold;
+    font-size: 18px;
+    white-space: nowrap;
+  }
+  #resNameInput {
+    flex: 1; min-width: 120px;
+    font-size: 18px; padding: 8px 12px;
+    border: 2px solid #f0e68c; border-radius: 8px;
+    background: rgba(255,255,255,0.95); color: #2c3e50;
+  }
+  #resTableInput {
+    width: 90px;
+    font-size: 18px; padding: 8px 10px;
+    border: 2px solid #f0e68c; border-radius: 8px;
+    background: rgba(255,255,255,0.95); color: #2c3e50; text-align: center;
+  }
+  #resSaveBtn {
+    background: #f0e68c; color: #2c3e50;
+    border: none; padding: 10px 18px; border-radius: 8px;
+    font-size: 18px; font-weight: bold; cursor: pointer;
+    white-space: nowrap;
+  }
+  #resSaveBtn:hover { background: #ffe100; }
+  #resViewBtn {
+    background: rgba(255,255,255,0.15); color: white;
+    border: 1px solid rgba(255,255,255,0.4); padding: 10px 14px;
+    border-radius: 8px; font-size: 16px; cursor: pointer;
+    white-space: nowrap;
+  }
+  #resViewBtn:hover { background: rgba(255,255,255,0.28); }
+  .res-badge {
+    background: #e74c3c; color: white;
+    border-radius: 50%; width: 22px; height: 22px;
+    font-size: 13px; font-weight: bold;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: -4px;
+  }
+
+  /* Modal ดูรายการจอง */
+  #reservationModal {
+    display: none; position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.75); z-index: 5000;
+    align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 20px; box-sizing: border-box;
+  }
+  #reservationModal.show { display: flex; }
+  #reservationModalBox {
+    background: white; border-radius: 16px; padding: 0;
+    max-width: 700px; width: 100%; margin: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35); overflow: hidden;
+  }
+  .res-modal-header {
+    background: linear-gradient(135deg, #2c3e50, #3d5a73);
+    padding: 18px 22px; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .res-modal-title { color: #f0e68c; font-size: 22px; font-weight: bold; }
+  .res-modal-close {
+    background: rgba(255,255,255,0.15); border: none; color: white;
+    font-size: 22px; width: 40px; height: 40px; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .res-card {
+    background: #fff;
+    border: 2px solid #bdc3c7;
+    border-left: 6px solid #3d5a73;
+    border-radius: 10px; padding: 14px 16px;
+    margin: 10px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .res-card.arrived {
+    border-left-color: #27ae60;
+    background: #f0fff4;
+    opacity: 0.7;
+  }
+  .res-card-info { flex: 1; text-align: left; }
+  .res-card-name { font-size: 20px; font-weight: bold; color: #2c3e50; }
+  .res-card-table { font-size: 16px; color: #7f8c8d; margin-top: 2px; }
+  .res-card-items { font-size: 15px; color: #555; margin-top: 6px; line-height: 1.5; }
+  .res-card-time { font-size: 13px; color: #aaa; margin-top: 4px; }
+  .res-arrive-btn {
+    background: #27ae60; color: white; border: none;
+    padding: 10px 16px; border-radius: 8px; font-size: 16px;
+    font-weight: bold; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .res-arrive-btn:hover { background: #1e8449; }
+  .res-cancel-btn {
+    background: #e74c3c; color: white; border: none;
+    padding: 7px 12px; border-radius: 6px; font-size: 14px;
+    cursor: pointer; margin-top: 6px; display: block;
+  }
+  .res-empty { text-align: center; color: #aaa; padding: 30px; font-size: 18px; }
+  /* ================= จบสไตล์ระบบจองโต๊ะ ================= */
+
 
 
 
@@ -305,6 +415,28 @@
   <div id="billingAlertsSection"></div>
 </div>
 <!-- ================= จบส่วนระบบเรียกเก็บเงิน ================= -->
+
+<!-- ================= ระบบจองโต๊ะ ================= -->
+<div id="reservationBar">
+  <span class="res-label">📋 จองโต๊ะ:</span>
+  <input type="text" id="resNameInput" placeholder="ชื่อลูกค้า" autocomplete="off" maxlength="30">
+  <button id="resSaveBtn" onclick="saveReservation()">+ จอง</button>
+  <button id="resViewBtn" onclick="openReservationModal()">📋 ดูการจอง <span id="resBadge" class="res-badge" style="display:none">0</span></button>
+</div>
+
+<!-- Modal รายการจอง -->
+<div id="reservationModal">
+  <div id="reservationModalBox">
+    <div class="res-modal-header">
+      <span class="res-modal-title">📋 รายการจองโต๊ะ</span>
+      <button class="res-modal-close" onclick="closeReservationModal()">✕</button>
+    </div>
+    <div style="padding:8px 0 16px;" id="reservationList">
+      <p class="res-empty">ยังไม่มีการจอง</p>
+    </div>
+  </div>
+</div>
+<!-- ================= จบระบบจองโต๊ะ ================= -->
 
 
 
@@ -636,6 +768,7 @@
   <div style="background:white; border-radius:16px; padding:30px; max-width:380px; width:90%; text-align:center;">
     <h2 style="margin:0 0 20px; color:#2c3e50;">🔑 เมนูเจ้าของ</h2>
     <div style="display:flex; flex-direction:column; gap:12px;">
+      <button onclick="closeOwnerMenu(); openReservationModal();" style="background:linear-gradient(135deg,#2c3e50,#3d5a73); color:#f0e68c; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📋 ดูรายการจองโต๊ะ</button>
       <button onclick="closeOwnerMenu(); openPriceSetting();" style="background:linear-gradient(135deg,#27ae60,#2ecc71); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">💰 ตั้งราคาเมนู</button>
       <button onclick="closeOwnerMenu(); openDailySummary();" style="background:linear-gradient(135deg,#16a085,#1abc9c); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📊 สรุปยอดรายวัน</button>
       <button onclick="closeOwnerMenu(); openRevenue();" style="background:linear-gradient(135deg,#2980b9,#3498db); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📈 สรุปยอดขายเงิน</button>
@@ -1612,13 +1745,18 @@ function runSummaryLoad() {
         tally(ordersSnap);
         tally(completedSnap);
 
-        renderSummary(allItems, range, staffStats, lockedPrices);
+        // เก็บ completedOrders ที่มี completedAt เพื่อคำนวณเวลารอจริง (สั่ง → ส่ง)
+        const allCompletedOrders = completedSnap.exists()
+            ? Object.values(completedSnap.val()).filter(o => o && o.timestamp && o.completedAt)
+            : [];
+
+        renderSummary(allItems, range, staffStats, lockedPrices, allCompletedOrders);
     }).catch(err => {
         content.innerHTML = '<p style="color:red; padding:20px;">❌ เกิดข้อผิดพลาด: ' + err.message + '</p>';
     });
 }
 
-function renderSummary(allItems, range, staffStats, lockedPrices) {
+function renderSummary(allItems, range, staffStats, lockedPrices, allCompletedOrders) {
     lockedPrices = lockedPrices || {};
     const content = document.getElementById('summaryContent');
     const entries = Object.entries(allItems).sort((a, b) => b[1] - a[1]);
@@ -1739,6 +1877,67 @@ function renderSummary(allItems, range, staffStats, lockedPrices) {
         html += `<div style="margin-top:8px; font-size:12px; color:#888; text-align:right;">
             🔒 ราคา ณ วันที่ขาย &nbsp;|&nbsp; ⚡ ราคาปัจจุบัน (ยังไม่ได้กดล้าง)
         </div>`;
+    }
+
+    // --- รอนานที่สุด (Top ทั้งหมดจาก completedOrders ในช่วงวัน) ---
+    if (allCompletedOrders && allCompletedOrders.length > 0) {
+        // คำนวณเวลารอ = completedAt - timestamp (เวลาสั่ง → ส่งอาหาร)
+        const waitList = allCompletedOrders
+            .filter(o => o.timestamp && o.completedAt)
+            .map(o => ({
+                item: o.item,
+                comment: o.comment || '',
+                table: o.table || '?',
+                orderTime: new Date(o.timestamp),
+                doneTime: new Date(o.completedAt),
+                mins: Math.round((new Date(o.completedAt) - new Date(o.timestamp)) / 60000)
+            }))
+            .filter(o => o.mins >= 0)
+            .sort((a, b) => b.mins - a.mins)
+            .slice(0, 10); // แสดง top 10
+
+        if (waitList.length > 0) {
+            const waitMedals = ['🥇','🥈','🥉'];
+            const rowColor = (mins) => mins >= 30 ? '#e74c3c' : mins >= 15 ? '#e67e22' : '#27ae60';
+            html += `<div style="background:white; border-radius:10px; padding:14px 16px; margin-bottom:16px; border:2px solid #e74c3c;">
+              <div style="font-size:15px; font-weight:700; color:#c0392b; margin-bottom:4px;">⏳ ออเดอร์ที่รอนานที่สุดวันนี้</div>
+              <div style="font-size:12px; color:#888; margin-bottom:12px;">นับจากเวลาสั่ง → ส่งอาหาร (เฉพาะออเดอร์ที่ส่งแล้ว)</div>
+              <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                <thead>
+                  <tr style="background:#fdecea;">
+                    <th style="padding:8px 10px; text-align:center; width:36px;">#</th>
+                    <th style="padding:8px 10px; text-align:left;">เมนู</th>
+                    <th style="padding:8px 10px; text-align:center;">โต๊ะ</th>
+                    <th style="padding:8px 10px; text-align:center;">สั่งเวลา</th>
+                    <th style="padding:8px 10px; text-align:center;">ส่งเวลา</th>
+                    <th style="padding:8px 10px; text-align:center; color:#c0392b;">รอนาน</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+            waitList.forEach((w, i) => {
+                const label = w.item + (w.comment ? ` (${w.comment})` : '');
+                const h = Math.floor(w.mins / 60);
+                const m = w.mins % 60;
+                const timeStr = h > 0 ? `${h} ชม. ${m} นาที` : `${w.mins} นาที`;
+                const orderStr = w.orderTime.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+                const doneStr  = w.doneTime.toLocaleTimeString('th-TH',  { hour:'2-digit', minute:'2-digit' });
+                const medal = i < 3 ? waitMedals[i] : `${i+1}.`;
+                const color = rowColor(w.mins);
+                const bgRow = i % 2 === 0 ? 'white' : '#fafafa';
+                html += `<tr style="background:${bgRow}; border-bottom:1px solid #f0f0f0;">
+                  <td style="padding:8px 10px; text-align:center; font-size:18px;">${medal}</td>
+                  <td style="padding:8px 10px; font-weight:${i<3?'700':'400'}; color:#2c3e50;">${label}</td>
+                  <td style="padding:8px 10px; text-align:center; color:#555;">โต๊ะ ${w.table}</td>
+                  <td style="padding:8px 10px; text-align:center; color:#888; font-size:13px;">${orderStr}</td>
+                  <td style="padding:8px 10px; text-align:center; color:#888; font-size:13px;">${doneStr}</td>
+                  <td style="padding:8px 10px; text-align:center; font-weight:700; color:${color};">${timeStr}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>
+              <div style="font-size:11px; color:#aaa; margin-top:8px; text-align:right;">แสดง 10 อันดับ รอนานที่สุด ของช่วงเวลาที่เลือก</div>
+            </div>`;
+        }
     }
 
     // --- Staff Summary ---
@@ -2871,6 +3070,166 @@ function openAccessCodeSetting() {
     });
 }
 // ================= จบระบบ Access Code =================
+
+// ================= ระบบจองโต๊ะ =================
+const RES_PATH = BASE_PATH + 'reservations/';
+let _reservations = []; // cache
+
+// บันทึกการจองใหม่ (พร้อมรายการอาหารที่เลือกไว้ในตะกร้า)
+function saveReservation() {
+    const name = document.getElementById('resNameInput').value.trim();
+    if (!name) { alert('กรุณาใส่ชื่อลูกค้า'); return; }
+
+    // เก็บรายการอาหารในตะกร้าปัจจุบัน
+    const preOrderItems = [];
+    selectionOrder.forEach(item => {
+        if (orderCounts[item] > 0) {
+            preOrderItems.push({
+                item, quantity: orderCounts[item],
+                comment: (menuComments[item] || '').trim()
+            });
+        }
+    });
+
+    const resData = {
+        name,
+        table: '',   // ยังไม่รู้โต๊ะ — ใส่ตอนลูกค้ามาถึง
+        preOrderItems,
+        timestamp: new Date().toISOString(),
+        status: 'waiting'
+    };
+
+    db.ref(RES_PATH).push(resData).then(() => {
+        orderCounts = {}; menuComments = {}; selectionOrder = [];
+        db.ref(BASE_PATH + 'tempData/' + deviceId).remove();
+        document.getElementById('resNameInput').value = '';
+        alert(`✅ จองให้ "${name}" เรียบร้อย!${preOrderItems.length > 0 ? '\n📝 บันทึกรายการอาหาร ' + preOrderItems.length + ' รายการไว้แล้ว' : '\n(ยังไม่มีรายการอาหาร)'}`);
+    });
+}
+
+// ลูกค้าจองมาถึงร้านแล้ว → ถามโต๊ะ แล้วโอนออเดอร์เข้าคิวครัว
+function markReservationArrived(resId, resData) {
+    const table = prompt(`ลูกค้า "${resData.name}" มาถึงแล้ว!\nจะนั่งโต๊ะไหนครับ?`, '');
+    if (table === null || table.trim() === '') return; // กด Cancel หรือไม่ใส่
+
+    const tableStr = table.trim();
+    const staffName = localStorage.getItem('staff_name') || '';
+    const now = new Date().toISOString();
+
+    if (resData.preOrderItems && resData.preOrderItems.length > 0) {
+        const priorityTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        resData.preOrderItems.forEach(po => {
+            const orderData = {
+                table: tableStr,
+                item: po.item,
+                quantity: po.quantity,
+                comment: po.comment || '',
+                timestamp: priorityTime,
+                reservedFor: resData.name,
+                staff: staffName || ''
+            };
+            db.ref(BASE_PATH + 'orders').push(orderData);
+            totalOrders[po.item] = (totalOrders[po.item] || 0) + po.quantity;
+        });
+        db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
+    }
+
+    db.ref(RES_PATH + resId + '/status').set('arrived');
+    db.ref(RES_PATH + resId + '/table').set(tableStr);
+    db.ref(RES_PATH + resId + '/arrivedAt').set(now);
+}
+
+// ลบการจอง
+function cancelReservation(resId, name) {
+    if (!confirm(`ยืนยันยกเลิกการจองของ "${name}" ใช่ไหม?`)) return;
+    db.ref(RES_PATH + resId).remove();
+}
+
+// เปิด Modal
+function openReservationModal() {
+    document.getElementById('reservationModal').classList.add('show');
+    renderReservationList();
+}
+function closeReservationModal() {
+    document.getElementById('reservationModal').classList.remove('show');
+}
+
+// Render รายการจอง
+function renderReservationList() {
+    const container = document.getElementById('reservationList');
+    const waiting = _reservations.filter(r => r.data.status !== 'arrived');
+    const arrived = _reservations.filter(r => r.data.status === 'arrived');
+
+    if (_reservations.length === 0) {
+        container.innerHTML = '<p class="res-empty">📭 ยังไม่มีการจอง</p>';
+        return;
+    }
+
+    let html = '';
+
+    if (waiting.length > 0) {
+        html += `<div style="padding:8px 16px 4px; font-size:15px; font-weight:bold; color:#2c3e50;">⏳ รอมา (${waiting.length} ราย)</div>`;
+        waiting.forEach(({ id, data: r }) => {
+            const timeStr = new Date(r.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            const itemsText = r.preOrderItems && r.preOrderItems.length > 0
+                ? r.preOrderItems.map(p => `${p.item}${p.comment ? ' ('+p.comment+')' : ''} ×${p.quantity}`).join(', ')
+                : '(ไม่มีรายการอาหาร)';
+            html += `
+            <div class="res-card" id="resCard_${id}">
+                <div class="res-card-info">
+                    <div class="res-card-name">👤 ${r.name}</div>
+                    <div class="res-card-table">🪑 ${r.table ? 'โต๊ะ ' + r.table : '<span style="color:#e67e22;">ยังไม่ระบุโต๊ะ (ใส่ตอนมาถึง)</span>'}</div>
+                    <div class="res-card-items">🍽️ ${itemsText}</div>
+                    <div class="res-card-time">🕐 จองเมื่อ ${timeStr} น.</div>
+                    <button class="res-cancel-btn" onclick="cancelReservation('${id}','${r.name.replace(/'/g,"\\'")}')">❌ ยกเลิกจอง</button>
+                </div>
+                <button class="res-arrive-btn" onclick="markReservationArrived('${id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">✅ มาถึงแล้ว!</button>
+            </div>`;
+        });
+    }
+
+    if (arrived.length > 0) {
+        html += `<div style="padding:8px 16px 4px; font-size:15px; font-weight:bold; color:#27ae60; margin-top:8px;">✅ มาถึงแล้ว (${arrived.length} ราย)</div>`;
+        arrived.forEach(({ id, data: r }) => {
+            const arrivedStr = r.arrivedAt ? new Date(r.arrivedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-';
+            html += `
+            <div class="res-card arrived">
+                <div class="res-card-info">
+                    <div class="res-card-name">✅ ${r.name}</div>
+                    <div class="res-card-table">🪑 โต๊ะ ${r.table || '-'}</div>
+                    <div class="res-card-time">มาถึง ${arrivedStr} น. — ส่งออเดอร์เข้าครัวแล้ว</div>
+                </div>
+                <button class="res-cancel-btn" style="background:#95a5a6; margin-top:0;" onclick="cancelReservation('${id}','${r.name.replace(/'/g,"\\'")}')">🗑️ ลบ</button>
+            </div>`;
+        });
+    }
+
+    container.innerHTML = html;
+}
+
+// อัปเดต badge จำนวนการจองที่รอ
+function updateResBadge() {
+    const waiting = _reservations.filter(r => r.data.status !== 'arrived').length;
+    const badge = document.getElementById('resBadge');
+    if (badge) {
+        badge.textContent = waiting;
+        badge.style.display = waiting > 0 ? 'inline-flex' : 'none';
+    }
+    // Refresh modal ถ้าเปิดอยู่
+    if (document.getElementById('reservationModal').classList.contains('show')) {
+        renderReservationList();
+    }
+}
+
+// Firebase listener
+db.ref(RES_PATH).on('value', snap => {
+    const val = snap.val();
+    _reservations = val ? Object.entries(val).map(([id, data]) => ({ id, data }))
+                             .sort((a, b) => new Date(a.data.timestamp) - new Date(b.data.timestamp))
+                       : [];
+    updateResBadge();
+});
+// ================= จบระบบจองโต๊ะ =================
 
 // ================= ระบบ Preset Comment (Firebase Realtime) =================
 
