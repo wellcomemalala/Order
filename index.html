@@ -763,12 +763,39 @@
   </div>
 </div>
 
+
+<!-- ================= Modal ออเดอร์รอนานที่สุด ================= -->
+<div id="waitRankingModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:10000; align-items:flex-start; justify-content:center; overflow-y:auto; padding:16px; box-sizing:border-box;">
+  <div style="background:white; border-radius:16px; max-width:700px; width:100%; margin:auto; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.4);">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#c0392b,#e74c3c); padding:18px 20px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">⏳ ออเดอร์รอนานที่สุด</div>
+        <div style="color:rgba(255,255,255,0.8); font-size:13px; margin-top:3px;">นับจากเวลาสั่ง → ส่งอาหาร</div>
+      </div>
+      <button onclick="closeWaitRanking()" style="background:rgba(255,255,255,0.2); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer;">✕</button>
+    </div>
+    <!-- Filter Tabs -->
+    <div style="display:flex; gap:8px; padding:14px 16px 0; flex-wrap:wrap;">
+      <button id="wrTab_today" onclick="loadWaitRanking('today')" style="padding:8px 18px; border-radius:20px; border:2px solid #e74c3c; background:#e74c3c; color:white; font-size:15px; font-weight:bold; cursor:pointer;">วันนี้</button>
+      <button id="wrTab_week" onclick="loadWaitRanking('week')" style="padding:8px 18px; border-radius:20px; border:2px solid #ddd; background:white; color:#666; font-size:15px; cursor:pointer;">สัปดาห์นี้</button>
+      <button id="wrTab_month" onclick="loadWaitRanking('month')" style="padding:8px 18px; border-radius:20px; border:2px solid #ddd; background:white; color:#666; font-size:15px; cursor:pointer;">เดือนนี้</button>
+    </div>
+    <!-- Content -->
+    <div id="waitRankingContent" style="padding:14px 16px 20px; min-height:120px;">
+      <p style="text-align:center; color:#aaa; padding:30px;">⏳ กำลังโหลด...</p>
+    </div>
+  </div>
+</div>
+<!-- ================= จบ Modal ออเดอร์รอนานที่สุด ================= -->
+
 <!-- ================= Modal เมนูเจ้าของ ================= -->
 <div id="ownerMenuModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:10000; align-items:center; justify-content:center;">
   <div style="background:white; border-radius:16px; padding:30px; max-width:380px; width:90%; text-align:center;">
     <h2 style="margin:0 0 20px; color:#2c3e50;">🔑 เมนูเจ้าของ</h2>
     <div style="display:flex; flex-direction:column; gap:12px;">
       <button onclick="closeOwnerMenu(); openReservationModal();" style="background:linear-gradient(135deg,#2c3e50,#3d5a73); color:#f0e68c; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📋 ดูรายการจองโต๊ะ</button>
+      <button onclick="closeOwnerMenu(); openWaitRanking();" style="background:linear-gradient(135deg,#c0392b,#e74c3c); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">⏳ ดูออเดอร์รอนานที่สุด</button>
       <button onclick="closeOwnerMenu(); openPriceSetting();" style="background:linear-gradient(135deg,#27ae60,#2ecc71); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">💰 ตั้งราคาเมนู</button>
       <button onclick="closeOwnerMenu(); openDailySummary();" style="background:linear-gradient(135deg,#16a085,#1abc9c); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📊 สรุปยอดรายวัน</button>
       <button onclick="closeOwnerMenu(); openRevenue();" style="background:linear-gradient(135deg,#2980b9,#3498db); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📈 สรุปยอดขายเงิน</button>
@@ -1702,8 +1729,8 @@ function runSummaryLoad() {
     content.innerHTML = '<p style="color:#888; text-align:center; padding:30px 0; font-size:16px;">⏳ กำลังโหลด...</p>';
 
     Promise.all([
-        db.ref(BASE_PATH + 'orders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
-        db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(range.start).endAt(range.end).once('value'),
+        db.ref(BASE_PATH + 'orders').once('value'),
+        db.ref(BASE_PATH + 'completedOrders').once('value'),
         db.ref(BASE_PATH + 'dailySnapshots').orderByKey().startAt(range.start.slice(0,10)).endAt(range.end.slice(0,10)).once('value')
     ]).then(([ordersSnap, completedSnap, snapshotsSnap]) => {
         const allItems = {};
@@ -1729,10 +1756,15 @@ function runSummaryLoad() {
             });
         }
 
-        // --- รวมจาก raw orders ---
+        // --- รวมจาก raw orders (filter ช่วงเวลาใน JS) ---
+        function inRange(ts) {
+            return ts && ts >= range.start && ts <= range.end;
+        }
         function tally(snap) {
             if (!snap.exists()) return;
             Object.values(snap.val()).forEach(o => {
+                const ts = o.timestamp || o.completedAt || '';
+                if (!inRange(ts)) return;
                 const key = o.item + (o.comment ? ' (' + o.comment + ')' : '');
                 allItems[key] = (allItems[key] || 0) + (o.quantity || 1);
                 if (o.staff) {
@@ -1747,7 +1779,7 @@ function runSummaryLoad() {
 
         // เก็บ completedOrders ที่มี completedAt เพื่อคำนวณเวลารอจริง (สั่ง → ส่ง)
         const allCompletedOrders = completedSnap.exists()
-            ? Object.values(completedSnap.val()).filter(o => o && o.timestamp && o.completedAt)
+            ? Object.values(completedSnap.val()).filter(o => o && o.timestamp && o.completedAt && inRange(o.timestamp))
             : [];
 
         renderSummary(allItems, range, staffStats, lockedPrices, allCompletedOrders);
@@ -3070,6 +3102,109 @@ function openAccessCodeSetting() {
     });
 }
 // ================= จบระบบ Access Code =================
+
+
+// ================= ระบบดูออเดอร์รอนานที่สุด =================
+function openWaitRanking() {
+    document.getElementById('waitRankingModal').style.display = 'flex';
+    loadWaitRanking('today');
+}
+function closeWaitRanking() {
+    document.getElementById('waitRankingModal').style.display = 'none';
+}
+
+function loadWaitRanking(period) {
+    // อัปเดต tab style
+    ['today','week','month'].forEach(t => {
+        const btn = document.getElementById('wrTab_' + t);
+        if (t === period) {
+            btn.style.background = '#e74c3c'; btn.style.color = 'white'; btn.style.borderColor = '#e74c3c'; btn.style.fontWeight = 'bold';
+        } else {
+            btn.style.background = 'white'; btn.style.color = '#666'; btn.style.borderColor = '#ddd'; btn.style.fontWeight = 'normal';
+        }
+    });
+
+    const box = document.getElementById('waitRankingContent');
+    box.innerHTML = '<p style="text-align:center; color:#aaa; padding:30px;">⏳ กำลังโหลด...</p>';
+
+    const now = new Date();
+    let start, end;
+    if (period === 'today') {
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+    } else if (period === 'week') {
+        const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
+        const mon = new Date(now); mon.setDate(now.getDate() - day); mon.setHours(0,0,0,0);
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+        start = mon.toISOString(); end = sun.toISOString();
+    } else {
+        start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        end   = new Date(now.getFullYear(), now.getMonth()+1, 0, 23, 59, 59).toISOString();
+    }
+
+    db.ref(BASE_PATH + 'completedOrders').once('value').then(snap => {
+        if (!snap.exists()) { box.innerHTML = '<p style="text-align:center; color:#aaa; padding:30px;">📭 ยังไม่มีข้อมูลออเดอร์</p>'; return; }
+
+        const rows = Object.values(snap.val())
+            .filter(o => o && o.timestamp && o.completedAt
+                      && o.timestamp >= start && o.timestamp <= end)
+            .map(o => ({
+                item    : o.item || '-',
+                comment : o.comment || '',
+                table   : o.table || '?',
+                orderTs : new Date(o.timestamp),
+                doneTs  : new Date(o.completedAt),
+                mins    : Math.round((new Date(o.completedAt) - new Date(o.timestamp)) / 60000)
+            }))
+            .filter(o => o.mins >= 0)
+            .sort((a, b) => b.mins - a.mins)
+            .slice(0, 15);
+
+        if (rows.length === 0) {
+            box.innerHTML = '<p style="text-align:center; color:#aaa; padding:30px;">📭 ไม่มีออเดอร์ในช่วงนี้</p>';
+            return;
+        }
+
+        const medals = ['🥇','🥈','🥉'];
+        const rowColor = m => m >= 30 ? '#e74c3c' : m >= 15 ? '#e67e22' : '#27ae60';
+
+        let html = '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:14px;">';
+        html += '<thead><tr style="background:#fdecea;">'
+              + '<th style="padding:9px 10px; text-align:center; width:36px;">#</th>'
+              + '<th style="padding:9px 10px; text-align:left;">เมนู</th>'
+              + '<th style="padding:9px 10px; text-align:center;">โต๊ะ</th>'
+              + '<th style="padding:9px 10px; text-align:center;">สั่งเวลา</th>'
+              + '<th style="padding:9px 10px; text-align:center;">ส่งเวลา</th>'
+              + '<th style="padding:9px 10px; text-align:center; color:#c0392b;">รอนาน</th>'
+              + '</tr></thead><tbody>';
+
+        rows.forEach((r, i) => {
+            const label    = r.item + (r.comment ? ` (${r.comment})` : '');
+            const h        = Math.floor(r.mins / 60);
+            const m        = r.mins % 60;
+            const timeStr  = h > 0 ? `${h} ชม. ${m} นาที` : `${r.mins} นาที`;
+            const orderStr = r.orderTs.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+            const doneStr  = r.doneTs.toLocaleTimeString('th-TH',  { hour:'2-digit', minute:'2-digit' });
+            const medal    = i < 3 ? medals[i] : `${i+1}.`;
+            const bg       = i % 2 === 0 ? 'white' : '#fafafa';
+            html += `<tr style="background:${bg}; border-bottom:1px solid #f0f0f0;">
+              <td style="padding:8px 10px; text-align:center; font-size:${i<3?'20':'14'}px;">${medal}</td>
+              <td style="padding:8px 10px; font-weight:${i<3?'700':'400'}; color:#2c3e50;">${label}</td>
+              <td style="padding:8px 10px; text-align:center; color:#555;">โต๊ะ ${r.table}</td>
+              <td style="padding:8px 10px; text-align:center; color:#888; font-size:13px;">${orderStr}</td>
+              <td style="padding:8px 10px; text-align:center; color:#888; font-size:13px;">${doneStr}</td>
+              <td style="padding:8px 10px; text-align:center; font-weight:700; color:${rowColor(r.mins)};">${timeStr}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        html += '<div style="font-size:11px; color:#aaa; margin-top:10px; text-align:right;">แสดง 15 อันดับ รอนานที่สุด</div>';
+        box.innerHTML = html;
+    }).catch(err => {
+        box.innerHTML = '<p style="color:red; padding:20px;">❌ โหลดข้อมูลไม่ได้: ' + err.message + '</p>';
+    });
+}
+// ================= จบระบบดูออเดอร์รอนานที่สุด =================
 
 // ================= ระบบจองโต๊ะ =================
 const RES_PATH = BASE_PATH + 'reservations/';
