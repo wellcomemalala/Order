@@ -567,6 +567,56 @@
   </div>
 </div>
 
+<!-- ================= Modal เมนูที่ขายไม่ได้ ================= -->
+<div id="unsoldMenuModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); z-index:2000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="background:#f8f9fa; max-width:780px; margin:20px auto 40px; border-radius:16px; padding:0; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.25); overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#4b4b4b,#7f8c8d); padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">📉 เมนูที่ขายไม่ได้</div>
+        <div style="color:rgba(255,255,255,0.7); font-size:13px; margin-top:3px;">ดูเมนูที่ไม่มีออเดอร์ในช่วงเวลาที่เลือก เพื่อช่วยตัดสินใจปรับเมนู</div>
+      </div>
+      <button onclick="closeUnsoldMenu()" style="background:rgba(255,255,255,0.15); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Tab Mode Selector -->
+    <div style="background:white; padding:14px 20px; border-bottom:1px solid #e9ecef; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="umTabDay"   onclick="setUnsoldMode('day')"   class="summary-tab summary-tab-um-active">📅 รายวัน</button>
+      <button id="umTabWeek"  onclick="setUnsoldMode('week')"  class="summary-tab">📆 สัปดาห์นี้</button>
+      <button id="umTabMonth" onclick="setUnsoldMode('month')" class="summary-tab">🗓️ เดือนนี้</button>
+      <button id="umTabRange" onclick="setUnsoldMode('range')" class="summary-tab">🔍 กำหนดเอง</button>
+    </div>
+
+    <!-- Date Controls -->
+    <div id="umDateControl" style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef;">
+      <!-- Day mode -->
+      <div id="umCtrlDay" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">เลือกวัน:</label>
+        <input type="date" id="umDatePicker" style="font-size:16px; padding:7px 12px; border:2px solid #7f8c8d; border-radius:8px;" onchange="runUnsoldLoad()">
+        <button onclick="setUnsoldTodayAndLoad()" style="background:#7f8c8d; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">วันนี้</button>
+        <button onclick="shiftUnsoldDay(-1)" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;" title="วันก่อนหน้า">◀</button>
+        <button onclick="shiftUnsoldDay(1)"  style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;" title="วันถัดไป">▶</button>
+      </div>
+      <!-- Range mode -->
+      <div id="umCtrlRange" style="display:none; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ตั้งแต่:</label>
+        <input type="date" id="umRangeStart" style="font-size:16px; padding:7px 12px; border:2px solid #8e44ad; border-radius:8px;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ถึง:</label>
+        <input type="date" id="umRangeEnd"   style="font-size:16px; padding:7px 12px; border:2px solid #8e44ad; border-radius:8px;">
+        <button onclick="runUnsoldLoad()" style="background:#8e44ad; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">ดูข้อมูล</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="umContent" style="padding:20px;">
+      <p style="color:#888; font-size:16px; text-align:center; padding:30px 0;">เลือกช่วงเวลาที่ต้องการครับ</p>
+    </div>
+
+  </div>
+</div>
+<!-- ================= จบ Modal เมนูที่ขายไม่ได้ ================= -->
+
 <style>
 .summary-tab {
   background:#f1f3f5; border:2px solid transparent; padding:8px 16px; border-radius:20px;
@@ -574,6 +624,7 @@
 }
 .summary-tab:hover { background:#e9ecef; }
 .summary-tab-active { background:#2980b9 !important; color:white !important; border-color:#2980b9 !important; }
+.summary-tab-um-active { background:#7f8c8d !important; color:white !important; border-color:#7f8c8d !important; }
 .summary-stat-card {
   border-radius:12px; padding:16px 20px; color:white; text-align:center; flex:1; min-width:130px;
 }
@@ -799,6 +850,7 @@
       <button onclick="closeOwnerMenu(); openPriceSetting();" style="background:linear-gradient(135deg,#27ae60,#2ecc71); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">💰 ตั้งราคาเมนู</button>
       <button onclick="closeOwnerMenu(); openDailySummary();" style="background:linear-gradient(135deg,#16a085,#1abc9c); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📊 สรุปยอดรายวัน</button>
       <button onclick="closeOwnerMenu(); openRevenue();" style="background:linear-gradient(135deg,#2980b9,#3498db); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📈 สรุปยอดขายเงิน</button>
+      <button onclick="closeOwnerMenu(); openUnsoldMenu();" style="background:linear-gradient(135deg,#7f8c8d,#95a5a6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📉 เมนูที่ขายไม่ได้</button>
       <button onclick="closeOwnerMenu(); openMenuManager();" style="background:linear-gradient(135deg,#e67e22,#f39c12); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🍽️ จัดการเมนู</button>
       <button onclick="closeOwnerMenu(); openAccessCodeSetting();" style="background:linear-gradient(135deg,#e74c3c,#c0392b); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🔑 ตั้งรหัสเข้าใช้งาน</button>
       <button onclick="closeOwnerMenu(); openChangePin();" style="background:linear-gradient(135deg,#8e44ad,#9b59b6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🔐 เปลี่ยน PIN</button>
@@ -3158,7 +3210,7 @@ function loadWaitRanking(period) {
             }))
             .filter(o => o.mins >= 0)
             .sort((a, b) => b.mins - a.mins)
-            .slice(0, 15);
+            .slice(0, 30);
 
         if (rows.length === 0) {
             box.innerHTML = '<p style="text-align:center; color:#aaa; padding:30px;">📭 ไม่มีออเดอร์ในช่วงนี้</p>';
@@ -3198,13 +3250,194 @@ function loadWaitRanking(period) {
         });
 
         html += '</tbody></table></div>';
-        html += '<div style="font-size:11px; color:#aaa; margin-top:10px; text-align:right;">แสดง 15 อันดับ รอนานที่สุด</div>';
+        html += '<div style="font-size:11px; color:#aaa; margin-top:10px; text-align:right;">แสดง 30 อันดับ รอนานที่สุด</div>';
         box.innerHTML = html;
     }).catch(err => {
         box.innerHTML = '<p style="color:red; padding:20px;">❌ โหลดข้อมูลไม่ได้: ' + err.message + '</p>';
     });
 }
 // ================= จบระบบดูออเดอร์รอนานที่สุด =================
+
+// ================= ระบบเมนูที่ขายไม่ได้ =================
+let unsoldMode = 'day'; // 'day' | 'week' | 'month' | 'range'
+
+function openUnsoldMenu() {
+    document.getElementById('unsoldMenuModal').style.display = 'block';
+    setUnsoldMode('day');
+}
+function closeUnsoldMenu() {
+    document.getElementById('unsoldMenuModal').style.display = 'none';
+}
+
+function setUnsoldMode(mode) {
+    unsoldMode = mode;
+    ['day','week','month','range'].forEach(m => {
+        const t = document.getElementById('umTab' + m.charAt(0).toUpperCase() + m.slice(1));
+        if (t) t.className = 'summary-tab' + (m === mode ? ' summary-tab-um-active' : '');
+    });
+    document.getElementById('umCtrlDay').style.display   = (mode === 'day')   ? 'flex' : 'none';
+    document.getElementById('umCtrlRange').style.display = (mode === 'range') ? 'flex' : 'none';
+
+    if (mode === 'day') {
+        if (!document.getElementById('umDatePicker').value) setUnsoldTodayAndLoad();
+        else runUnsoldLoad();
+    } else if (mode === 'week' || mode === 'month') {
+        runUnsoldLoad();
+    }
+    // range: รอให้กดปุ่ม "ดูข้อมูล"
+}
+
+function shiftUnsoldDay(delta) {
+    const picker = document.getElementById('umDatePicker');
+    if (!picker.value) { setUnsoldTodayAndLoad(); return; }
+    const d = new Date(picker.value + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    picker.value = d.toISOString().slice(0, 10);
+    runUnsoldLoad();
+}
+
+function setUnsoldTodayAndLoad() {
+    const today = new Date();
+    document.getElementById('umDatePicker').value = today.toISOString().slice(0, 10);
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 6);
+    document.getElementById('umRangeStart').value = weekAgo.toISOString().slice(0, 10);
+    document.getElementById('umRangeEnd').value   = today.toISOString().slice(0, 10);
+    runUnsoldLoad();
+}
+
+function getUnsoldDateRange() {
+    const today = new Date();
+    today.setHours(23, 59, 59, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    if (unsoldMode === 'day') {
+        const d = document.getElementById('umDatePicker').value || todayStr;
+        return { start: d + 'T00:00:00', end: d + 'T23:59:59', label: formatThaiDate(d) };
+    }
+    if (unsoldMode === 'week') {
+        const now = new Date();
+        const dow = now.getDay();
+        const mon = new Date(now); mon.setDate(now.getDate() - ((dow + 6) % 7));
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        const s = mon.toISOString().slice(0, 10);
+        const e = sun.toISOString().slice(0, 10);
+        return { start: s + 'T00:00:00', end: e + 'T23:59:59', label: `${formatThaiDate(s)} — ${formatThaiDate(e)}` };
+    }
+    if (unsoldMode === 'month') {
+        const now = new Date();
+        const y = now.getFullYear(), m = now.getMonth();
+        const s = `${y}-${String(m+1).padStart(2,'0')}-01`;
+        const lastDay = new Date(y, m+1, 0).getDate();
+        const e = `${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+        const mName = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+        return { start: s + 'T00:00:00', end: e + 'T23:59:59', label: mName };
+    }
+    if (unsoldMode === 'range') {
+        const s = document.getElementById('umRangeStart').value;
+        const e = document.getElementById('umRangeEnd').value;
+        if (!s || !e) return null;
+        return { start: s + 'T00:00:00', end: e + 'T23:59:59', label: `${formatThaiDate(s)} — ${formatThaiDate(e)}` };
+    }
+    return null;
+}
+
+function runUnsoldLoad() {
+    const range = getUnsoldDateRange();
+    if (!range) return;
+    const content = document.getElementById('umContent');
+    content.innerHTML = '<p style="color:#888; text-align:center; padding:30px 0; font-size:16px;">⏳ กำลังโหลด...</p>';
+
+    function inRange(ts) {
+        return ts && ts >= range.start && ts <= range.end;
+    }
+
+    Promise.all([
+        db.ref(BASE_PATH + 'orders').once('value'),
+        db.ref(BASE_PATH + 'completedOrders').once('value')
+    ]).then(([ordersSnap, completedSnap]) => {
+        // รวมชื่อเมนูที่ "ขายได้" ในช่วงเวลานี้ (ไม่รวม comment ต่อท้าย)
+        const soldItems = new Set();
+        function tally(snap) {
+            if (!snap.exists()) return;
+            Object.values(snap.val()).forEach(o => {
+                const ts = o && (o.timestamp || o.completedAt) || '';
+                if (!o || !inRange(ts)) return;
+                if (o.item) soldItems.add(o.item);
+            });
+        }
+        tally(ordersSnap);
+        tally(completedSnap);
+
+        // รายชื่อเมนูทั้งหมดที่มีอยู่ในระบบ (จาก menuCategories) แยกตามหมวดหมู่
+        const catNames = Object.keys(menuCategories || {});
+        const unsoldByCat = {};
+        let totalMenuCount = 0;
+        let unsoldCount = 0;
+
+        catNames.forEach(cat => {
+            const items = menuCategories[cat] || [];
+            const unsoldInCat = items.filter(item => !soldItems.has(item));
+            totalMenuCount += items.length;
+            unsoldCount += unsoldInCat.length;
+            if (unsoldInCat.length > 0) unsoldByCat[cat] = unsoldInCat;
+        });
+
+        renderUnsoldMenu(unsoldByCat, range, totalMenuCount, unsoldCount);
+    }).catch(err => {
+        content.innerHTML = '<p style="color:red; padding:20px;">❌ เกิดข้อผิดพลาด: ' + err.message + '</p>';
+    });
+}
+
+function renderUnsoldMenu(unsoldByCat, range, totalMenuCount, unsoldCount) {
+    const content = document.getElementById('umContent');
+    const soldCount = totalMenuCount - unsoldCount;
+
+    let html = `<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);">
+        <div class="summary-stat-label">📅 ช่วงเวลา</div>
+        <div style="font-size:14px; font-weight:600; margin-top:4px; line-height:1.3;">${range.label}</div>
+      </div>
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71);">
+        <div class="summary-stat-label">ขายได้</div>
+        <div class="summary-stat-value">${soldCount}</div>
+        <div class="summary-stat-unit">เมนู</div>
+      </div>
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#c0392b,#e74c3c);">
+        <div class="summary-stat-label">ขายไม่ได้</div>
+        <div class="summary-stat-value">${unsoldCount}</div>
+        <div class="summary-stat-unit">เมนู</div>
+      </div>
+      <div class="summary-stat-card" style="background:linear-gradient(135deg,#7f8c8d,#95a5a6);">
+        <div class="summary-stat-label">เมนูทั้งหมด</div>
+        <div class="summary-stat-value">${totalMenuCount}</div>
+        <div class="summary-stat-unit">เมนู</div>
+      </div>
+    </div>`;
+
+    if (unsoldCount === 0) {
+        html += `<p style="color:#27ae60; font-size:16px; text-align:center; padding:30px 0; font-weight:600;">🎉 ทุกเมนูมีออเดอร์ในช่วงเวลานี้ครับ</p>`;
+        content.innerHTML = html;
+        return;
+    }
+
+    html += `<div style="background:white; border-radius:10px; overflow:hidden; border:1px solid #e9ecef;">`;
+
+    Object.entries(unsoldByCat).forEach(([cat, items]) => {
+        html += `<div style="background:#f1f3f5; padding:8px 16px; font-weight:700; color:#2c3e50; font-size:14px; border-top:1px solid #e9ecef;">📂 ${cat} <span style="color:#e74c3c; font-weight:600;">(${items.length} เมนู)</span></div>`;
+        html += `<div style="display:flex; flex-wrap:wrap; gap:8px; padding:10px 16px;">`;
+        items.forEach(item => {
+            const price = menuPrices[item];
+            html += `<span style="background:#fdecea; color:#c0392b; padding:6px 12px; border-radius:20px; font-size:14px; font-weight:600;">${item}${price ? ` <span style="color:#999; font-weight:400; font-size:12px;">(${price}฿)</span>` : ''}</span>`;
+        });
+        html += `</div>`;
+    });
+
+    html += `</div>`;
+    html += `<div style="font-size:12px; color:#888; margin-top:10px; text-align:right;">💡 เมนูเหล่านี้ไม่มีออเดอร์เข้ามาเลยในช่วงเวลาที่เลือก ลองพิจารณาดูว่าควรปรับหรือเอาออกจากเมนูหรือไม่</div>`;
+
+    content.innerHTML = html;
+}
+// ================= จบระบบเมนูที่ขายไม่ได้ =================
 
 // ================= ระบบจองโต๊ะ =================
 const RES_PATH = BASE_PATH + 'reservations/';
