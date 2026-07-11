@@ -494,6 +494,9 @@
 
 <div id="totalOrders"></div>
 <div id="completedOrders"></div>
+<div style="text-align:center; margin-top:10px;">
+  <button id="toggleCompletedBtn" class="order-button" style="width:auto; padding:8px 20px; background-color:#7f8c8d;" onclick="toggleShowAllCompleted()">ดูรายการทั้งหมด (วันนี้)</button>
+</div>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; padding: 10px;">
   <button class="order-button" style="background-color: #e74c3c;" onclick="clearCompletedOrders()">ล้างรายการที่เสร็จแล้ว</button>
@@ -1424,10 +1427,28 @@ function changeTableName(){
     }
 }
 
+let showAllCompletedToday = false; // สลับด้วยปุ่ม "ดูรายการทั้งหมด (วันนี้)"
+
+function toggleShowAllCompleted() {
+    showAllCompletedToday = !showAllCompletedToday;
+    showCompletedOrders();
+}
+
 function showCompletedOrders() {
     const e = document.getElementById('completedOrders'); e.innerHTML = '<h2>เสร็จแล้ว</h2>';
-    // ดึงข้อมูลพร้อม Firebase key จาก snap ที่เก็บไว้
-    completedOrdersWithKeys.slice().reverse().slice(0, 15).forEach(({ key, data: o }) => {
+
+    // กรองเฉพาะรายการของ "วันนี้" จาก completedAt (ถ้าไม่มี completedAt ให้ถือว่าเป็นของวันนี้ เพื่อกันเคสข้อมูลเก่า/พลาด)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todaysItems = completedOrdersWithKeys.filter(({ data: o }) => {
+        const ts = o.completedAt || o.timestamp;
+        return !ts || ts.slice(0, 10) === todayStr;
+    });
+
+    const listToShow = showAllCompletedToday
+        ? todaysItems.slice().reverse()
+        : todaysItems.slice().reverse().slice(0, 15);
+
+    listToShow.forEach(({ key, data: o }) => {
         const p = document.createElement('p');
         p.style.display = 'flex'; p.style.alignItems = 'center'; p.style.gap = '8px'; p.style.justifyContent = 'center';
         const txt = document.createTextNode(`โต๊ะ ${o.table}: ${o.item}${o.comment ? ' ('+o.comment+')' : ''} `);
@@ -1439,6 +1460,14 @@ function showCompletedOrders() {
         p.appendChild(txt); p.appendChild(btn);
         e.appendChild(p);
     });
+
+    // อัปเดตข้อความ/สถานะปุ่มสลับ ให้ตรงกับโหมดปัจจุบัน
+    const toggleBtn = document.getElementById('toggleCompletedBtn');
+    if (toggleBtn) {
+        toggleBtn.textContent = showAllCompletedToday
+            ? `แสดงล่าสุด 15 รายการ (ทั้งหมดวันนี้ ${todaysItems.length} รายการ)`
+            : `ดูรายการทั้งหมด (วันนี้ ${todaysItems.length} รายการ)`;
+    }
 }
 
 function undoSpecificComplete(key, data) {
