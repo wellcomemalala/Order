@@ -476,7 +476,9 @@
   <h2>คิว</h2>
   <table id="tableOrdersTable">
     <thead>
-      <tr><th>โต๊ะ</th><th>เมนู</th><th>จำนวน</th><th>คอมเมนต์</th><th>รอ</th><th>สถานะ</th></tr>
+      <tr><th>โต๊ะ</th><th>เมนู</th><th>จำนวน
+        <button id="qtyEditToggleBtn" onclick="toggleQtyEditMode()" title="เปิด/ปิด โหมดแก้ไขจำนวน" style="display:block; margin:4px auto 0; border:none; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:bold; cursor:pointer; background:#7f8c8d; color:white;">✏️ แก้ไข</button>
+      </th><th>คอมเมนต์</th><th>รอ</th><th>สถานะ</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -1093,6 +1095,27 @@ let menuCategories = {
 
 let orderCounts = {}, menuComments = {}, selectionOrder = [];
 let orders = [], completedOrders = [], completedOrdersWithKeys = [], totalOrders = {}, soldOutMap = {};
+// โหมดแก้ไขจำนวน (แสดงปุ่ม +/- ในตารางคิว) จำค่าไว้ใน localStorage เพื่อให้เปิด/ปิดคงอยู่แม้รีเฟรชหน้า
+let qtyEditMode = (localStorage.getItem('qtyEditMode') === '1');
+
+function toggleQtyEditMode() {
+    qtyEditMode = !qtyEditMode;
+    localStorage.setItem('qtyEditMode', qtyEditMode ? '1' : '0');
+    updateQtyEditToggleBtn();
+    showTableOrders();
+}
+
+function updateQtyEditToggleBtn() {
+    const btn = document.getElementById('qtyEditToggleBtn');
+    if (!btn) return;
+    if (qtyEditMode) {
+        btn.textContent = '✅ กำลังแก้ไข';
+        btn.style.background = '#e67e22';
+    } else {
+        btn.textContent = '✏️ แก้ไข';
+        btn.style.background = '#7f8c8d';
+    }
+}
 let isStockMode = false;
 
 function createCategoryButtons() {
@@ -1269,6 +1292,53 @@ function handleCompleteUnit(orderId, wantDone) {
     });
 }
 
+// เพิ่มจำนวนของออเดอร์ที่ "อยู่ในคิวแล้ว" ทีละ 1 จาน โดยไม่ต้องลงรายการใหม่
+// ใช้ตอนลูกค้าเปลี่ยนใจอยากเพิ่มจำนวนของเมนูที่สั่งไปแล้ว
+function incrementLiveOrderQty(orderId) {
+    const o = orders.find(x => x.id === orderId);
+    if (!o) return;
+    const newQty = (Number(o.quantity) || 0) + 1;
+    // จานใหม่ที่เพิ่มยังไม่เสร็จ ดังนั้นสถานะต้องกลับเป็น pending เสมอ
+    db.ref(BASE_PATH + 'orders/' + orderId).update({ quantity: newQty, status: 'pending' });
+    totalOrders[o.item] = (totalOrders[o.item] || 0) + 1;
+    db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
+}
+
+// ลดจำนวนของออเดอร์ที่ "อยู่ในคิวแล้ว" ทีละ 1 จาน โดยจะลดเฉพาะจานที่ "ยังไม่เสร็จ" เท่านั้น
+// เพื่อไม่ให้กระทบจานที่ครัวทำเสร็จ/เสิร์ฟไปแล้ว
+function decrementLiveOrderQty(orderId) {
+    const o = orders.find(x => x.id === orderId);
+    if (!o) return;
+    const oldQty = Number(o.quantity) || 0;
+    if (oldQty <= 0) return;
+    const doneUnits = o.doneUnits || {};
+
+    // หาจานที่ยังไม่เสร็จตัวสุดท้ายเพื่อตัดออก
+    let removeIndex = -1;
+    for (let i = oldQty - 1; i >= 0; i--) {
+        if (!doneUnits[i]) { removeIndex = i; break; }
+    }
+    if (removeIndex === -1) {
+        alert('รายการนี้เสร็จ/เสิร์ฟไปหมดแล้ว ไม่สามารถลดจำนวนได้จากหน้านี้');
+        return;
+    }
+
+    const newQty = oldQty - 1;
+    if (newQty <= 0) {
+        db.ref(BASE_PATH + 'orders/' + orderId).remove();
+    } else {
+        const newDoneUnits = reindexDoneUnits(doneUnits, oldQty, removeIndex);
+        const allDone = Object.keys(newDoneUnits).length === newQty;
+        db.ref(BASE_PATH + 'orders/' + orderId).update({
+            quantity: newQty,
+            doneUnits: newDoneUnits,
+            status: allDone ? 'ready' : 'pending'
+        });
+    }
+    if (totalOrders[o.item]) totalOrders[o.item] = Math.max(0, totalOrders[o.item] - 1);
+    db.ref(BASE_PATH + 'totalOrders').set(totalOrders);
+}
+
 function undoLastComplete() {
     db.ref(BASE_PATH + 'completedOrders').limitToLast(1).once('value', snap => {
         if (!snap.exists()) return;
@@ -1359,7 +1429,28 @@ function insertOrderRow(tbody, o, displayQty, isReady, mins, unitFlag) {
         itemCell.innerHTML = `<span>${o.item}</span>${staffTag}`;
     }
 
-    r.insertCell().textContent = displayQty;
+    const qCell = r.insertCell();
+    qCell.style.cssText = 'white-space:nowrap; text-align:center;';
+    const qSpan = document.createElement('span');
+    qSpan.textContent = displayQty;
+    qSpan.style.cssText = 'display:inline-block; min-width:18px; font-weight:bold;';
+    qCell.appendChild(qSpan);
+    if (qtyEditMode) {
+        if (!isReady) {
+            const minusBtn = document.createElement('button');
+            minusBtn.textContent = '−';
+            minusBtn.title = 'ลดจำนวน 1 (เฉพาะจานที่ยังไม่เสร็จ)';
+            minusBtn.style.cssText = 'width:26px; height:26px; margin-left:6px; border:none; border-radius:6px; background:#e74c3c; color:white; font-size:16px; font-weight:bold; cursor:pointer; line-height:1;';
+            minusBtn.onclick = () => decrementLiveOrderQty(o.id);
+            qCell.appendChild(minusBtn);
+        }
+        const plusBtn = document.createElement('button');
+        plusBtn.textContent = '+';
+        plusBtn.title = 'เพิ่มจำนวน 1';
+        plusBtn.style.cssText = 'width:26px; height:26px; margin-left:4px; border:none; border-radius:6px; background:#2ecc71; color:white; font-size:16px; font-weight:bold; cursor:pointer; line-height:1;';
+        plusBtn.onclick = () => incrementLiveOrderQty(o.id);
+        qCell.appendChild(plusBtn);
+    }
 
     const cCell = r.insertCell();
     cCell.innerHTML = `<input value="${o.comment || ''}" onchange="db.ref('${BASE_PATH}orders/${o.id}/comment').set(this.value)" style="width:70px">`;
@@ -1598,6 +1689,7 @@ function updateStaffBadge() {
 // ================= จบระบบชื่อพนักงาน =================
 
 window.addEventListener('load', () => {
+    updateQtyEditToggleBtn();
     initAccessCode();
     initStaffName();
     initTables();
