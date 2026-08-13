@@ -357,6 +357,91 @@
     cursor: pointer; margin-top: 6px; display: block;
   }
   .res-empty { text-align: center; color: #aaa; padding: 30px; font-size: 18px; }
+  #resNoteInput {
+    flex: 1; min-width: 140px;
+    font-size: 16px; padding: 8px 12px;
+    border: 2px solid #f0e68c; border-radius: 8px;
+    background: rgba(255,255,255,0.95); color: #2c3e50;
+  }
+  .res-card-note {
+    font-size: 14px; color: #8e44ad; margin-top: 6px;
+    background: #f5eef9; border-radius: 6px; padding: 6px 10px;
+    line-height: 1.4; white-space: pre-wrap;
+  }
+  .res-card-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .res-edit-btn {
+    background: #2980b9; color: white; border: none;
+    padding: 7px 12px; border-radius: 6px; font-size: 14px;
+    cursor: pointer;
+  }
+  .res-edit-btn:hover { background: #1f618d; }
+
+  /* Modal แก้ไขการจอง */
+  #reservationEditModal {
+    display: none; position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.8); z-index: 5100;
+    align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 20px; box-sizing: border-box;
+  }
+  #reservationEditModal.show { display: flex; }
+  #reservationEditBox {
+    background: white; border-radius: 16px; padding: 0;
+    max-width: 560px; width: 100%; margin: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35); overflow: hidden;
+  }
+  #reservationEditBody { padding: 18px 22px 22px; text-align: left; }
+  .edit-field-label {
+    display: block; font-size: 14px; font-weight: bold;
+    color: #2c3e50; margin: 14px 0 6px;
+  }
+  .edit-field-label:first-child { margin-top: 0; }
+  #editResName, #editResNote {
+    width: 100%; box-sizing: border-box;
+    font-size: 16px; padding: 10px 12px;
+    border: 2px solid #dcdde1; border-radius: 8px;
+    color: #2c3e50; font-family: inherit;
+  }
+  #editResNote { resize: vertical; }
+  #editResItems { margin-top: 6px; }
+  .edit-item-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid #eee;
+  }
+  .edit-item-name { flex: 1; font-size: 15px; color: #2c3e50; font-weight: bold; }
+  .edit-item-qty { display: flex; align-items: center; gap: 6px; }
+  .edit-item-qty button {
+    width: 28px; height: 28px; border-radius: 6px; border: none;
+    background: #ecf0f1; color: #2c3e50; font-size: 16px; font-weight: bold;
+    cursor: pointer; line-height: 1;
+  }
+  .edit-item-qty button:hover { background: #dfe6e9; }
+  .edit-item-qty span { min-width: 18px; text-align: center; font-weight: bold; }
+  .edit-item-comment {
+    width: 120px; font-size: 13px; padding: 6px 8px;
+    border: 1px solid #dcdde1; border-radius: 6px; color: #555;
+  }
+  .edit-item-remove {
+    background: none; border: none; color: #e74c3c;
+    font-size: 16px; cursor: pointer; padding: 4px 6px;
+  }
+  #editResAddRow { display: flex; gap: 8px; margin-top: 10px; }
+  #editResAddSelect {
+    flex: 1; font-size: 15px; padding: 9px 10px;
+    border: 2px solid #dcdde1; border-radius: 8px; color: #2c3e50;
+  }
+  #editResAddBtn {
+    background: #f0e68c; color: #2c3e50; border: none;
+    padding: 9px 14px; border-radius: 8px; font-size: 15px;
+    font-weight: bold; cursor: pointer; white-space: nowrap;
+  }
+  #editResAddBtn:hover { background: #ffe100; }
+  #editResSaveBtn {
+    width: 100%; margin-top: 20px;
+    background: #27ae60; color: white; border: none;
+    padding: 13px; border-radius: 10px; font-size: 17px;
+    font-weight: bold; cursor: pointer;
+  }
+  #editResSaveBtn:hover { background: #1e8449; }
   /* ================= จบสไตล์ระบบจองโต๊ะ ================= */
 
 
@@ -420,6 +505,7 @@
 <div id="reservationBar">
   <span class="res-label">📋 จองโต๊ะ:</span>
   <input type="text" id="resNameInput" placeholder="ชื่อลูกค้า" autocomplete="off" maxlength="30">
+  <input type="text" id="resNoteInput" placeholder="📝 โน้ต (ถ้ามี)" autocomplete="off" maxlength="200">
   <button id="resSaveBtn" onclick="saveReservation()">+ จอง</button>
   <button id="resViewBtn" onclick="openReservationModal()">📋 ดูการจอง <span id="resBadge" class="res-badge" style="display:none">0</span></button>
 </div>
@@ -433,6 +519,33 @@
     </div>
     <div style="padding:8px 0 16px;" id="reservationList">
       <p class="res-empty">ยังไม่มีการจอง</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal แก้ไขการจอง -->
+<div id="reservationEditModal">
+  <div id="reservationEditBox">
+    <div class="res-modal-header">
+      <span class="res-modal-title">✏️ แก้ไขการจอง</span>
+      <button class="res-modal-close" onclick="closeEditReservationModal()">✕</button>
+    </div>
+    <div id="reservationEditBody">
+      <label class="edit-field-label">👤 ชื่อลูกค้า</label>
+      <input type="text" id="editResName" maxlength="30" autocomplete="off">
+
+      <label class="edit-field-label">📝 โน้ต (รายละเอียดเพิ่มเติม เช่น ขอเซอร์ไพรส์)</label>
+      <textarea id="editResNote" maxlength="200" rows="2" placeholder="ไม่บังคับ"></textarea>
+
+      <label class="edit-field-label">🍽️ รายการอาหาร</label>
+      <div id="editResItems"></div>
+
+      <div id="editResAddRow">
+        <select id="editResAddSelect"></select>
+        <button id="editResAddBtn" onclick="editAddItem()">+ เพิ่มเมนู</button>
+      </div>
+
+      <button id="editResSaveBtn" onclick="saveEditReservation()">💾 บันทึกการแก้ไข</button>
     </div>
   </div>
 </div>
@@ -3631,6 +3744,7 @@ let _reservations = []; // cache
 function saveReservation() {
     const name = document.getElementById('resNameInput').value.trim();
     if (!name) { alert('กรุณาใส่ชื่อลูกค้า'); return; }
+    const note = document.getElementById('resNoteInput').value.trim();
 
     // เก็บรายการอาหารในตะกร้าปัจจุบัน
     const preOrderItems = [];
@@ -3645,6 +3759,7 @@ function saveReservation() {
 
     const resData = {
         name,
+        note,
         table: '',   // ยังไม่รู้โต๊ะ — ใส่ตอนลูกค้ามาถึง
         preOrderItems,
         timestamp: new Date().toISOString(),
@@ -3655,6 +3770,7 @@ function saveReservation() {
         orderCounts = {}; menuComments = {}; selectionOrder = [];
         db.ref(BASE_PATH + 'tempData/' + deviceId).remove();
         document.getElementById('resNameInput').value = '';
+        document.getElementById('resNoteInput').value = '';
         alert(`✅ จองให้ "${name}" เรียบร้อย!${preOrderItems.length > 0 ? '\n📝 บันทึกรายการอาหาร ' + preOrderItems.length + ' รายการไว้แล้ว' : '\n(ยังไม่มีรายการอาหาร)'}`);
     });
 }
@@ -3732,8 +3848,12 @@ function renderReservationList() {
                     <div class="res-card-name">👤 ${r.name}</div>
                     <div class="res-card-table">🪑 ${r.table ? 'โต๊ะ ' + r.table : '<span style="color:#e67e22;">ยังไม่ระบุโต๊ะ (ใส่ตอนมาถึง)</span>'}</div>
                     <div class="res-card-items">🍽️ ${itemsText}</div>
+                    ${r.note ? `<div class="res-card-note">📝 ${r.note}</div>` : ''}
                     <div class="res-card-time">🕐 จองเมื่อ ${timeStr} น.</div>
-                    <button class="res-cancel-btn" onclick="cancelReservation('${id}','${r.name.replace(/'/g,"\\'")}')">❌ ยกเลิกจอง</button>
+                    <div class="res-card-actions">
+                        <button class="res-edit-btn" onclick="openEditReservation('${id}')">✏️ แก้ไข</button>
+                        <button class="res-cancel-btn" style="margin-top:0;" onclick="cancelReservation('${id}','${r.name.replace(/'/g,"\\'")}')">❌ ยกเลิกจอง</button>
+                    </div>
                 </div>
                 <button class="res-arrive-btn" onclick="markReservationArrived('${id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">✅ มาถึงแล้ว!</button>
             </div>`;
@@ -3749,6 +3869,7 @@ function renderReservationList() {
                 <div class="res-card-info">
                     <div class="res-card-name">✅ ${r.name}</div>
                     <div class="res-card-table">🪑 โต๊ะ ${r.table || '-'}</div>
+                    ${r.note ? `<div class="res-card-note">📝 ${r.note}</div>` : ''}
                     <div class="res-card-time">มาถึง ${arrivedStr} น. — ส่งออเดอร์เข้าครัวแล้ว</div>
                 </div>
                 <button class="res-cancel-btn" style="background:#95a5a6; margin-top:0;" onclick="cancelReservation('${id}','${r.name.replace(/'/g,"\\'")}')">🗑️ ลบ</button>
@@ -3780,7 +3901,114 @@ db.ref(RES_PATH).on('value', snap => {
                              .sort((a, b) => new Date(a.data.timestamp) - new Date(b.data.timestamp))
                        : [];
     updateResBadge();
+    // ถ้า Modal แก้ไขเปิดอยู่และรายการที่แก้โดนอัปเดต/ลบจาก firebase ให้รีเฟรชแบบไม่ทำข้อมูลที่กำลังพิมพ์หาย
+    if (_editResId && !_reservations.find(r => r.id === _editResId)) {
+        closeEditReservationModal(); // การจองถูกลบ/ยกเลิกไปแล้วระหว่างแก้ไข
+    }
 });
+
+// ================= แก้ไขการจอง (ชื่อ / โน้ต / รายการอาหาร) =================
+let _editResId = null;
+let _editResItems = []; // [{item, quantity, comment}]
+
+function openEditReservation(resId) {
+    const res = _reservations.find(r => r.id === resId);
+    if (!res) return;
+    const r = res.data;
+    _editResId = resId;
+    _editResItems = (r.preOrderItems || []).map(p => ({ item: p.item, quantity: p.quantity, comment: p.comment || '' }));
+
+    document.getElementById('editResName').value = r.name || '';
+    document.getElementById('editResNote').value = r.note || '';
+    populateEditAddSelect();
+    renderEditItems();
+    document.getElementById('reservationEditModal').classList.add('show');
+}
+
+function closeEditReservationModal() {
+    document.getElementById('reservationEditModal').classList.remove('show');
+    _editResId = null;
+    _editResItems = [];
+}
+
+// เติมตัวเลือกเมนูทั้งหมดในระบบลง dropdown สำหรับเพิ่มเมนู
+function populateEditAddSelect() {
+    const sel = document.getElementById('editResAddSelect');
+    const allMenus = [...new Set(Object.values(menuCategories).flat())].sort((a, b) => a.localeCompare(b, 'th'));
+    sel.innerHTML = '<option value="">-- เลือกเมนูเพิ่ม --</option>' +
+        allMenus.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function renderEditItems() {
+    const container = document.getElementById('editResItems');
+    if (_editResItems.length === 0) {
+        container.innerHTML = '<p style="color:#aaa; text-align:center; padding:10px 0; font-size:14px;">ยังไม่มีรายการอาหาร — เพิ่มได้ด้านล่าง</p>';
+        return;
+    }
+    container.innerHTML = _editResItems.map((it, idx) => `
+        <div class="edit-item-row">
+            <div class="edit-item-name">${it.item}</div>
+            <div class="edit-item-qty">
+                <button onclick="editItemQty(${idx}, -1)">−</button>
+                <span>${it.quantity}</span>
+                <button onclick="editItemQty(${idx}, 1)">+</button>
+            </div>
+            <input type="text" class="edit-item-comment" placeholder="หมายเหตุ" value="${(it.comment || '').replace(/"/g, '&quot;')}" onchange="editItemComment(${idx}, this.value)">
+            <button class="edit-item-remove" onclick="editRemoveItem(${idx})" title="ลบเมนูนี้">🗑️</button>
+        </div>
+    `).join('');
+}
+
+function editItemQty(idx, delta) {
+    if (!_editResItems[idx]) return;
+    _editResItems[idx].quantity += delta;
+    if (_editResItems[idx].quantity <= 0) {
+        _editResItems.splice(idx, 1);
+    }
+    renderEditItems();
+}
+
+function editItemComment(idx, value) {
+    if (!_editResItems[idx]) return;
+    _editResItems[idx].comment = value.trim();
+}
+
+function editRemoveItem(idx) {
+    _editResItems.splice(idx, 1);
+    renderEditItems();
+}
+
+function editAddItem() {
+    const sel = document.getElementById('editResAddSelect');
+    const item = sel.value;
+    if (!item) return;
+    const existing = _editResItems.find(it => it.item === item);
+    if (existing) {
+        existing.quantity += 1;
+    } else {
+        _editResItems.push({ item, quantity: 1, comment: '' });
+    }
+    sel.value = '';
+    renderEditItems();
+}
+
+function saveEditReservation() {
+    if (!_editResId) return;
+    const name = document.getElementById('editResName').value.trim();
+    if (!name) { alert('กรุณาใส่ชื่อลูกค้า'); return; }
+    const note = document.getElementById('editResNote').value.trim();
+
+    db.ref(RES_PATH + _editResId).update({
+        name,
+        note,
+        preOrderItems: _editResItems
+    }).then(() => {
+        closeEditReservationModal();
+    }).catch(() => {
+        alert('เกิดข้อผิดพลาด บันทึกไม่สำเร็จ กรุณาลองใหม่');
+    });
+}
+// ================= จบแก้ไขการจอง =================
 // ================= จบระบบจองโต๊ะ =================
 
 // ================= ระบบ Preset Comment (Firebase Realtime) =================
