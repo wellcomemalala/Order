@@ -43,6 +43,34 @@
 #syncStatusBar.offline {
     background: linear-gradient(to right, #e74c3c, #c0392b); /* สีแดง */
 }
+  /* ================= สไตล์ Offline Blocking Overlay ================= */
+  #offlineOverlay {
+    display: none;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(20, 10, 10, 0.92);
+    z-index: 10000;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  #offlineOverlay.show { display: flex; }
+  #offlineBox {
+    background: white; border-radius: 20px; padding: 40px 32px;
+    max-width: 420px; width: 90%; text-align: center;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    border: 3px solid #e74c3c;
+  }
+  #offlineIcon { font-size: 56px; margin-bottom: 8px; animation: offlinePulse 1.2s infinite; }
+  #offlineBox h2 { color: #c0392b; font-size: 28px; margin: 8px 0; }
+  #offlineBox p { color: #555; font-size: 17px; line-height: 1.5; margin: 12px 0 20px; }
+  #offlineSpinner {
+    width: 36px; height: 36px; margin: 0 auto 12px;
+    border: 4px solid #f1c2c2; border-top-color: #e74c3c;
+    border-radius: 50%; animation: offlineSpin 0.8s linear infinite;
+  }
+  #offlineWaitText { color: #e74c3c; font-size: 15px; font-weight: bold; }
+  @keyframes offlineSpin { to { transform: rotate(360deg); } }
+  @keyframes offlinePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  /* ================= จบสไตล์ Offline Blocking Overlay ================= */
   #selectedItemsDisplay { background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
   .comment-input-selected { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
   .category-blue { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important; color: white !important; }
@@ -455,6 +483,19 @@
   <span id="syncStatusText">เชื่อมต่อแล้ว</span>
   <span id="staffBadge"></span>
 </div>
+
+<!-- ================= Offline Blocking Overlay ================= -->
+<div id="offlineOverlay">
+  <div id="offlineBox">
+    <div id="offlineIcon">📡</div>
+    <h2>การเชื่อมต่อขาดหาย</h2>
+    <p>กรุณาตรวจสอบสัญญาณอินเทอร์เน็ต / WiFi ก่อนใช้งานต่อ<br>
+       ระบบจะปลดล็อกให้อัตโนมัติเมื่อเชื่อมต่อกลับมา</p>
+    <div id="offlineSpinner"></div>
+    <div id="offlineWaitText">กำลังรอการเชื่อมต่อ...</div>
+  </div>
+</div>
+<!-- ================= จบ Offline Blocking Overlay ================= -->
 
 
 <!-- ================= Access Code Overlay ================= -->
@@ -1154,6 +1195,7 @@ const db = firebase.database();
 const BASE_PATH = "racing_order_app/";
 
 let deviceId = localStorage.getItem('kaki_dev_id') || 'dev_' + Math.random().toString(36).substr(2, 9);
+window.isOnline = true; // ค่าเริ่มต้น จะถูกอัปเดตจริงโดย .info/connected listener ด้านล่าง
 localStorage.setItem('kaki_dev_id', deviceId);
 
 let chefMenus={'kik':['ต้มแซ่บ','คั่ว','ผักหวาน','แป๊ะซะ','แวะถัวะ','ผัดเผ็ด','อ่อม','แกงป่าผัก','แกงป่าหน่อไม้ดอง','แกงป่าหน่อไม้สด','บอน','มะรุม','กระบุก','แกงไก่หน่อ','แกงหมูหน่อ','แกงเนื้อหน่อ','แกงปลา','ผัดฉ่า','ปลาร้า','ไก่น้ำปลา','สามชั้น','หมูน้ำปลา','โสม','ผักหวานเห็ดเผาะ','ผักหวานไข่มดแดงใส่เห็ดเผาะ'],'jeab':['ไข่เจียว','แกงหอย','พิเศษ','ทอง','แถม','หมกหม้อ','ขี้เหล็ก','ต้มจืด','ทอดมัน','หมกปลานิล','ไก่หลงทาง'],'nan':['ขาหมู','ข้าว','ขนม','นึ่ง'],'see':['ลาบ','ปลาเนื้ออ่อน','ปลานิลแดดเดียว','สมุนไพร','สะเดาน้ำปลาหวาน','ตำ','ปลาหลด','เตี๋ยว','ต้มยำ','เกา','ชุดโปร']}; // fallback; overwritten by Firebase
@@ -1809,7 +1851,15 @@ window.addEventListener('load', () => {
     loadMenuCategoriesFromFirebase(); // โหลด menuCategories จาก Firebase ก่อน แล้วค่อย createCategoryButtons
     db.ref(BASE_PATH + 'orders').on('value', snap => {
         const val = snap.val();
-        orders = val ? Object.entries(val).map(([id, data]) => ({ id, ...data })) : [];
+        const rawOrders = val ? Object.entries(val).map(([id, data]) => ({ id, ...data })) : [];
+        // --- กันออเดอร์ผี: บาง record อาจเหลือแค่บาง field (เช่น status) เพราะเครื่องหนึ่งออฟไลน์แล้วมี
+        // เครื่องอื่นลบออเดอร์นั้นไปก่อนที่คำสั่งค้างจะ sync กลับมา ทำให้ path ถูกสร้างใหม่แบบข้อมูลไม่ครบ
+        // (ไม่มี table/item) -> กรองไม่ให้แสดง และลบทิ้งออกจากฐานข้อมูลอัตโนมัติ
+        const ghostOrders = rawOrders.filter(o => !o.table || !o.item);
+        if (ghostOrders.length > 0) {
+            ghostOrders.forEach(o => db.ref(BASE_PATH + 'orders/' + o.id).remove());
+        }
+        orders = rawOrders.filter(o => o.table && o.item);
         showTableOrders(); showTotalOrders();
     });
     db.ref(BASE_PATH + 'completedOrders').on('value', snap => {
@@ -1843,18 +1893,29 @@ window.addEventListener('load', () => {
         }
         showSelectedItems();
     });
+    let offlineSince = null; // เวลาที่เริ่มหลุด ใช้กันการเด้งเตือนเร็วเกินไปตอนหลุดแป๊บเดียว
     db.ref(".info/connected").on("value", snap => {
     const statusBar = document.getElementById('syncStatusBar');
     const statusText = document.getElementById('syncStatusText');
-    
+    const overlay = document.getElementById('offlineOverlay');
+
     if (snap.val()) {
         // ออนไลน์ - สีเขียว
         statusText.textContent = "ออนไลน์ (ID: " + deviceId + ")";
         statusBar.classList.remove('offline'); // ลบคลาส offline
+        window.isOnline = true;
+        offlineSince = null;
+        overlay.classList.remove('show'); // ปลดล็อกหน้าจอทันทีที่กลับมาออนไลน์
     } else {
         // ออฟไลน์ - สีแดง
         statusText.textContent = "ออฟไลน์";
         statusBar.classList.add('offline'); // เพิ่มคลาส offline
+        window.isOnline = false;
+        if (!offlineSince) offlineSince = Date.now();
+        // หน่วง 1.5 วิ ก่อนเด้ง overlay กันหลุดสัญญาณแป๊บเดียวๆ (blip) แล้วรบกวนการทำงาน
+        setTimeout(() => {
+            if (!window.isOnline && offlineSince) overlay.classList.add('show');
+        }, 1500);
     }
 });
     setInterval(showTableOrders, 30000);
