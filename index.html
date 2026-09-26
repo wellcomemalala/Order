@@ -2148,8 +2148,39 @@ function changeTableName(){
         const updates = {};
         orders.forEach(d => { if(d.table === o) updates[d.id + '/table'] = n; });
         db.ref(BASE_PATH + 'orders').update(updates).catch(e => alert('เปลี่ยนชื่อโต๊ะไม่สำเร็จ: ' + e.message));
+
+        // ✅ FIX: ย้าย "รายการที่เสิร์ฟไปแล้ว" ของรอบปัจจุบัน (ยังไม่ปิดบิล) ไปโต๊ะใหม่ด้วย
+        // เดิมย้ายให้แค่ orders (ที่ยังไม่เสิร์ฟ) ส่วน completedOrders ที่เสิร์ฟไปแล้วยังค้างชื่อโต๊ะเดิม
+        // เครื่องเก็บเงินเลยยังนับว่าโต๊ะเดิม "ไม่ว่าง" อยู่ ทั้งที่ลูกค้าย้ายไปนั่งโต๊ะใหม่หมดแล้ว
+        moveCompletedOrdersToTable(o, n);
+
         moveGuestRound(o, n);   // ย้ายจำนวนคนของรอบปัจจุบันตามไปด้วย
         document.getElementById('oldTableName').value=''; document.getElementById('newTableName').value='';
+    }
+}
+
+// ✅ FIX: ย้ายเฉพาะ completedOrders ของ "วันนี้" และ "รอบปัจจุบัน" (หลังเวลาปิดบิลล่าสุดของโต๊ะเดิม)
+// ไปเป็นของโต๊ะใหม่ — ใช้หลักการเดียวกับ moveGuestRound เพื่อไม่แตะข้อมูลรอบเก่า/วันเก่าที่ปิดบิลไปแล้ว
+async function moveCompletedOrdersToTable(oldName, newName) {
+    try {
+        const oldKey = fbKeySafe(oldName);
+        if (!oldKey) return;
+        const closedAt = (await db.ref(POS_PATH + 'lastClosed/' + oldKey).once('value')).val() || '';
+        const closedMs = tsMs(closedAt);
+        const todayStr = localDateStr();
+        const updates = {};
+        (completedOrdersWithKeys || []).forEach(({ key, data }) => {
+            if (!data || data.table !== oldName) return;
+            const ts = data.completedAt || data.timestamp;
+            if (!ts || String(ts).slice(0, 10) !== todayStr) return;   // เฉพาะของวันนี้
+            if (closedMs && tsMs(ts) <= closedMs) return;              // ของรอบเก่าที่ปิดบิลไปแล้ว ไม่แตะ
+            updates[key + '/table'] = newName;
+        });
+        if (Object.keys(updates).length) {
+            await db.ref(BASE_PATH + 'completedOrders').update(updates);
+        }
+    } catch (e) {
+        console.warn('moveCompletedOrdersToTable', e && e.message);
     }
 }
 
