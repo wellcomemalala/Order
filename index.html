@@ -2001,7 +2001,21 @@ function insertOrderRow(tbody, o, displayQty, isReady, mins, unitFlag) {
         tableCell.appendChild(input);
         input.focus();
         input.select();
+        let done = false;   // ✅ FIX: กันไม่ให้ทำงานซ้ำ ไม่ว่าจะถูกเรียกจาก blur/Enter/Escape กี่รอบก็ตาม
+        // ✅ FIX: ไม่ว่าจะเปลี่ยนชื่อจริงหรือกดยกเลิก ให้เซลล์นี้กลับเป็นป้ายชื่อโต๊ะปกติทันที
+        // เดิมรอให้มีออเดอร์ใหม่เข้ามากระตุ้นให้วาดตารางใหม่ทั้งหมดถึงจะกลับเป็นปกติ (เพราะ showTableOrders()
+        // ตั้งใจไม่วาดทับตอนมี input โฟกัสอยู่ กันตัวอักษรที่พิมพ์ค้างหาย) ถ้าไม่มีออเดอร์ใหม่เข้ามาเลย
+        // หรือกดยกเลิกโดยไม่เปลี่ยนชื่อ (ไม่มีการเขียนข้อมูลลง Firebase) ช่องนี้จะค้างเป็นกล่องพิมพ์ตลอดไป
+        // และดับเบิลคลิกซ้ำก็ไม่ได้ผล เพราะ event ผูกกับ <span> เดิมที่ถูกลบไปแล้ว
+        const restoreLabel = (displayTable) => {
+            if (done) return;
+            done = true;
+            tableLabel.textContent = 'โต๊ะ ' + displayTable;
+            tableCell.innerHTML = '';
+            tableCell.appendChild(tableLabel);
+        };
         const doRename = () => {
+            if (done) return;
             const newTable = input.value.trim();
             if (newTable && newTable !== currentTable) {
                 // ✅ FIX: อัพเดตทีเดียว (atomic) เดิมยิงหลาย request เสี่ยงชื่อเปลี่ยนไม่ครบ
@@ -2010,12 +2024,22 @@ function insertOrderRow(tbody, o, displayQty, isReady, mins, unitFlag) {
                 db.ref(BASE_PATH + 'orders').update(updates)
                     .catch(e => alert('เปลี่ยนชื่อโต๊ะไม่สำเร็จ: ' + e.message));
 
+                // ✅ FIX: ย้ายรายการที่เสิร์ฟไปแล้วของรอบปัจจุบันไปโต๊ะใหม่ด้วย (จุดเดียวกับปุ่ม "ย้ายโต๊ะ")
+                // กันโต๊ะเดิมค้างสถานะ "ไม่ว่าง" ที่เครื่องเก็บเงิน ทั้งที่ลูกค้าย้ายไปนั่งโต๊ะใหม่แล้ว
+                moveCompletedOrdersToTable(currentTable, newTable);
+
                 // ย้ายจำนวนลูกค้าของรอบปัจจุบันตามไปด้วย
                 moveGuestRound(currentTable, newTable);
+                restoreLabel(newTable);
+            } else {
+                restoreLabel(currentTable);
             }
         };
         input.onblur = doRename;
-        input.onkeydown = (e) => { if (e.key === 'Enter') { doRename(); input.blur(); } if (e.key === 'Escape') input.blur(); };
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') doRename();
+            if (e.key === 'Escape') restoreLabel(currentTable);
+        };
     };
     tableCell.appendChild(tableLabel);
     // -----------------------------------------
