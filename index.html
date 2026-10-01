@@ -1070,6 +1070,7 @@ window.addEventListener('DOMContentLoaded', () => {
       <button onclick="closeOwnerMenu(); openPriceSetting();" style="background:linear-gradient(135deg,#27ae60,#2ecc71); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">💰 ตั้งราคาเมนู</button>
       <button onclick="closeOwnerMenu(); openDailySummary();" style="background:linear-gradient(135deg,#16a085,#1abc9c); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📊 สรุปยอดรายวัน</button>
       <button onclick="closeOwnerMenu(); openRevenue();" style="background:linear-gradient(135deg,#2980b9,#3498db); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📈 สรุปยอดขายเงิน</button>
+      <button onclick="closeOwnerMenu(); openTableHistory();" style="background:linear-gradient(135deg,#6c3fb5,#8e5fd6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🕒 ประวัติรอบโต๊ะ</button>
       <button onclick="closeOwnerMenu(); openUnsoldMenu();" style="background:linear-gradient(135deg,#7f8c8d,#95a5a6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📉 เมนูที่ขายไม่ได้</button>
       <button onclick="closeOwnerMenu(); openMenuManager();" style="background:linear-gradient(135deg,#e67e22,#f39c12); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🍽️ จัดการเมนู</button>
       <button onclick="closeOwnerMenu(); openAccessCodeSetting();" style="background:linear-gradient(135deg,#e74c3c,#c0392b); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🔑 ตั้งรหัสเข้าใช้งาน</button>
@@ -1078,6 +1079,67 @@ window.addEventListener('DOMContentLoaded', () => {
     <button onclick="closeOwnerMenu()" style="margin-top:16px; background:none; border:1px solid #ccc; color:#999; padding:8px 24px; border-radius:8px; cursor:pointer;">ปิด</button>
   </div>
 </div>
+
+<!-- ================= Modal ประวัติรอบโต๊ะ (เจ้าของ) ================= -->
+<style>
+  .th-chip{border:2px solid #d5c9ea;background:#fff;color:#4a2c7a;border-radius:10px;padding:8px 14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .th-chip small{font-weight:500;color:#8a7aa8;margin-left:4px}
+  .th-chip.on{background:#6c3fb5;border-color:#6c3fb5;color:#fff}
+  .th-chip.on small{color:#e6dcf7}
+  .th-round{background:#fff;border:1px solid #e3dcf0;border-left:6px solid #6c3fb5;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .th-round.th-open{border-left-color:#27ae60}
+  .th-round.th-split{border-left-color:#e67e22}
+  .th-rh{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:6px}
+  .th-rn{font-size:19px;font-weight:800;color:#2c3e50}
+  .th-rt{font-size:16px;color:#555;font-weight:600}
+  .th-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#efe9fa;color:#4a2c7a}
+  .th-badge.g{background:#e3f6ea;color:#1e7a45}
+  .th-badge.o{background:#fdeedd;color:#b35a00}
+  .th-badge.r{background:#fde8e6;color:#b03a2e}
+  .th-items{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .th-item{background:#f4f1fa;border-radius:8px;padding:5px 10px;font-size:15px;color:#2c3e50}
+  .th-item b{color:#6c3fb5}
+  .th-item i{font-style:normal;color:#c0392b;font-size:12px;margin-left:3px}
+  .th-round details{margin-top:6px}
+  .th-round summary{cursor:pointer;color:#6c3fb5;font-weight:600;font-size:14px}
+  .th-row{display:flex;gap:10px;padding:5px 0;border-bottom:1px dashed #eee;font-size:14px;color:#333;flex-wrap:wrap}
+  .th-row .tm{min-width:48px;color:#888;font-variant-numeric:tabular-nums}
+  .th-row .cm{color:#b35a00}
+  .th-row .st{color:#888;margin-left:auto}
+  .th-note{font-size:13px;color:#7f8c8d;margin-top:4px}
+  .th-warn{background:#fff6e0;border:1px solid #f0d58a;color:#7a5a00;border-radius:8px;padding:8px 12px;font-size:14px;margin-bottom:10px}
+</style>
+<div id="tableHistoryModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); z-index:2000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="background:#f8f9fa; max-width:780px; margin:20px auto 40px; border-radius:16px; padding:0; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.25); overflow:hidden;">
+
+    <div style="background:linear-gradient(135deg,#3b1f6b,#6c3fb5); padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">🕒 ประวัติรอบโต๊ะ</div>
+        <div style="color:rgba(255,255,255,0.7); font-size:13px; margin-top:3px;">ดูว่าแต่ละรอบลูกค้าของโต๊ะนั้นสั่งอะไรไปบ้าง (แยกตามการปิดบิล)</div>
+      </div>
+      <button onclick="closeTableHistory()" style="background:rgba(255,255,255,0.15); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <label style="font-size:16px; color:#555; font-weight:600;">เลือกวัน:</label>
+      <input type="date" id="thDatePicker" style="font-size:16px; padding:7px 12px; border:2px solid #6c3fb5; border-radius:8px;" onchange="thReload()">
+      <button onclick="thToday()" style="background:#6c3fb5; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">วันนี้</button>
+      <button onclick="thShiftDay(-1)" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;">◀</button>
+      <button onclick="thShiftDay(1)" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;">▶</button>
+      <button onclick="thReload()" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:16px; cursor:pointer;" title="โหลดใหม่">🔄</button>
+    </div>
+
+    <div style="padding:14px 20px 4px;">
+      <input type="text" id="thFilter" placeholder="🔍 พิมพ์เลขโต๊ะเพื่อกรอง..." oninput="thRenderChips()" autocomplete="off"
+             style="width:100%; box-sizing:border-box; font-size:16px; padding:8px 12px; border:2px solid #d5c9ea; border-radius:8px; margin-bottom:10px;">
+      <div id="thStatus" style="font-size:14px; color:#7f8c8d; margin-bottom:8px;"></div>
+      <div id="thChips" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+    </div>
+
+    <div id="thResult" style="padding:6px 20px 22px;"></div>
+  </div>
+</div>
+<!-- ================= จบ Modal ประวัติรอบโต๊ะ ================= -->
 
 <!-- ================= Modal ตั้งราคา ================= -->
 <div id="priceSettingModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:10000; overflow-y:auto; padding:10px; box-sizing:border-box;">
@@ -1519,7 +1581,7 @@ function showSelectedItems() {
                 menuComments[i] = e.target.value; 
                 db.ref(BASE_PATH + 'tempData/' + deviceId + '/comments/' + i).set(e.target.value);
             };
-            // --- Preset bar (สร้าง���รงนี้เลย ไม่ต้อง override ทีหลัง) ---
+            // --- Preset bar (สร้างตรงนี้เลย ไม่ต้อง override ทีหลัง) ---
             cCell.appendChild(buildPresetBar(input));
             cCell.appendChild(input);
         }
@@ -1606,7 +1668,7 @@ function isCurrentGuestRound(cur, closedAt, now) {
   const closed = tsMs(closedAt);
   const start = tsMs(cur.rec.startTs || cur.rec.updatedAt || cur.rec.lastTs);
   if (closed) return start > closed;
-  return !!cur.last && (now - cur.last) <= SEATING_GAP_MS;
+  return !!cur.last;   // ยังไม่เคยปิดบิล: ถือเป็นรอบปัจจุบัน (ไม่ใช้เวลาตัดรอบ)
 }
 
 function closeGuestModal() {
@@ -1714,7 +1776,7 @@ async function editGuestCount() {
   } catch (e) {}
   const n = await askGuestModal(name, cur ? Number(cur.rec.count) || 0 : 0, {
     subtitle: 'โต๊ะ ' + name + (cur ? ' · รอบล่าสุด ' + String(cur.rec.startTs || '').slice(11, 16) + ' น.' : ' · ยังไม่มีรอบวันนี้'),
-    title: '���ก้จำนวนคนรอบนี้',
+    title: 'แก้จำนวนคนรอบนี้',
     cancelText: 'ปิด',
     note: 'แก้เฉพาะรอบล่าสุดของโต๊ะนี้ รอบก่อนหน้าไม่กระทบ'
   });
@@ -1888,7 +1950,7 @@ function incrementLiveOrderQty(orderId) {
     const o = orders.find(x => x.id === orderId);
     if (!o) return;
     const newQty = (Number(o.quantity) || 0) + 1;
-    // จานใหม่ที่เพิ่มยังไม่เสร็จ ดั���นั้นสถานะต้องกลับเป็น pending เสมอ
+    // จานใหม่ที่เพิ่มยังไม่เสร็จ ดังนั้นสถานะต้องกลับเป็น pending เสมอ
     db.ref(BASE_PATH + 'orders/' + orderId).update({ quantity: newQty, status: 'pending' });
     bumpTotal(o.item, 1);
 }
@@ -2531,14 +2593,12 @@ function paintTableStatus() {
     (typeof orders !== 'undefined' && orders ? orders : []).forEach(add);
     (typeof completedOrders !== 'undefined' && completedOrders ? completedOrders : []).forEach(add);
 
-    const limit = (Number(TB_STALE_H) > 0 ? Number(TB_STALE_H) : 3) * 3600000;
     const now = Date.now();
-    // แบ่งรอบ: ออเดอร์ห่างกันเกิน limit = คนละรอบลูกค้า นับเฉพาะรอบล่าสุด (กันออเดอร์เก่าที่ไม่เคยปิดบิลมาปน)
+    // เลิกใช้กฎ "ห่างกันเกิน X ชม." — รอบของโต๊ะจบเมื่อปิดบิลเท่านั้น (ออเดอร์หลัง lastClosed ทั้งหมดนับเป็นรอบปัจจุบัน)
     const agg = {};
     Object.keys(lists).forEach(k => {
         const a = lists[k].sort((x, y) => x.ms - y.ms);
-        let s = a.length - 1;
-        while (s > 0 && (a[s].ms - a[s - 1].ms) <= limit) s--;
+        const s = 0;
         const e = { qty: 0, first: a[s].ms, last: a[a.length - 1].ms };
         for (let i = s; i < a.length; i++) e.qty += a[i].qty;
         agg[k] = e;
@@ -2546,7 +2606,7 @@ function paintTableStatus() {
     btns.forEach(btn => {
         const k = btn.dataset.tablekey;
         const e = agg[k];
-        const fresh = e && (now - e.last) <= limit;
+        const fresh = !!e;   // มีออเดอร์หลังปิดบิลล่าสุด = ไม่ว่าง จนกว่าจะปิดบิล
         let cls = 'tb-free', sub = '';
         if (POS_OPEN[k]) {
             cls = 'tb-paying';
@@ -3294,7 +3354,7 @@ function mmRenderCatList() {
     const list = document.getElementById('mmCatList');
     const cats = Object.keys(menuCategories);
     if (cats.length === 0) {
-        list.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px;">ยังไม่มีหมวดหมู่ เพิ่มหมวด���ด้เลยครับ</p>';
+        list.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px;">ยังไม่มีหมวดหมู่ เพิ่มหมวดได้เลยครับ</p>';
         return;
     }
     list.innerHTML = '';
@@ -4125,7 +4185,7 @@ function runRevenueLoad() {
             });
         }
 
-        // รวมจาก raw orders (วันที่ยังไม่ได้กดล้าง — ���ช้ราคาปัจจุบัน)
+        // รวมจาก raw orders (วันที่ยังไม่ได้กดล้าง — ใช้ราคาปัจจุบัน)
         function addSnap(snap) {
             if (!snap.exists()) return;
             Object.values(snap.val()).forEach(o => {
@@ -5265,6 +5325,316 @@ function addPreset() {
 }
 
 // ================= จบระบบ Preset Comment =================
+</script>
+<script>
+/* ================= ประวัติรอบโต๊ะ (เจ้าของ) =================
+   อ่านอย่างเดียว — ไม่เขียนหรือแก้ข้อมูลใดๆ ใน Firebase
+   แบ่งรอบของโต๊ะจาก "เวลาปิดบิล" ที่เครื่องเก็บเงินบันทึกไว้ (pos_cashier_v1/bills, merges, adminClears, lastClosed)
+   แบ่งรอบด้วยการปิดบิล/ย้ายยอด/ล้างสถานะเท่านั้น ไม่ใช้ช่วงเวลาห่างของออเดอร์มาตัดรอบ */
+(function () {
+    const TH = { date: '', data: null, rounds: {}, names: {}, table: null, seq: 0 };
+
+    function $th(id) { return document.getElementById(id); }
+    function hhmm(ms) { const d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+    function baht(n) { return '฿' + (Number(n) || 0).toLocaleString('th-TH'); }
+    function dayOf(ms) { return localDateStr(new Date(ms)); }
+    function addDays(dateStr, n) {
+        const p = dateStr.split('-').map(Number);
+        return localDateStr(new Date(p[0], p[1] - 1, p[2] + n));
+    }
+    function objVals(v) { return v && typeof v === 'object' ? Object.keys(v).map(k => v[k]).filter(x => x && typeof x === 'object') : []; }
+
+    /* ---------- โหลดข้อมูลของวันที่เลือก ---------- */
+    async function loadDay(dateStr) {
+        const next = addDays(dateStr, 1);
+        const start = dateStr + 'T00:00:00', end = dateStr + 'T23:59:59.999';
+        const safe = p => Promise.resolve(p).then(s => ({ ok: true, v: s.val() })).catch(() => ({ ok: false, v: null }));
+        const R = await Promise.all([
+            safe(db.ref(BASE_PATH + 'orders').once('value')),
+            safe(db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(start).endAt(end).once('value')),
+            safe(db.ref(POS_PATH + 'bills/' + dateStr).once('value')),
+            safe(db.ref(POS_PATH + 'bills/' + next).once('value')),
+            safe(db.ref(POS_PATH + 'merges/' + dateStr).once('value')),
+            safe(db.ref(POS_PATH + 'merges/' + next).once('value')),
+            safe(db.ref(POS_PATH + 'adminClears/' + dateStr).once('value')),
+            safe(db.ref(POS_PATH + 'adminClears/' + next).once('value')),
+            safe(db.ref(POS_PATH + 'lastClosed').once('value')),
+            safe(db.ref(GUEST_PATH + dateStr).once('value'))
+        ]);
+        if (!R[0].ok && !R[1].ok) throw new Error('อ่านข้อมูลออเดอร์ไม่สำเร็จ');
+
+        const orders = [];
+        const pushOrder = (o, pending) => {
+            if (!o || !o.table) return;
+            const ms = tbMs(o.timestamp);
+            if (!ms || dayOf(ms) !== dateStr) return;
+            const key = fbKeySafe(String(o.table));
+            if (!key) return;
+            orders.push({
+                key: key, table: String(o.table), item: String(o.item || '-'), qty: Number(o.quantity) || 1,
+                ms: ms, comment: o.comment ? String(o.comment) : '', staff: o.staff ? String(o.staff) : '', pending: !!pending
+            });
+        };
+        objVals(R[0].v).forEach(o => pushOrder(o, true));
+        objVals(R[1].v).forEach(o => pushOrder(o, false));
+
+        return {
+            date: dateStr,
+            orders: orders,
+            bills: objVals(R[2].v).concat(objVals(R[3].v)),
+            merges: objVals(R[4].v).concat(objVals(R[5].v)),
+            clears: objVals(R[6].v).concat(objVals(R[7].v)),
+            lc: R[8].v || {},
+            guests: R[9].v || {},
+            billsOk: R[2].ok && R[3].ok
+        };
+    }
+
+    /* ---------- ตัวแบ่งรอบของโต๊ะหนึ่งๆ ---------- */
+    function boundariesFor(key, d) {
+        const B = [];
+        d.bills.forEach(b => {
+            const ms = tbMs(b.closedAt);
+            if (!ms) return;
+            const own = fbKeySafe(String(b.table)) === key;
+            let linked = false;
+            if (!own && b.linkedTakeaway) linked = String(b.linkedTakeaway).split(',').some(n => fbKeySafe(n.trim()) === key);
+            if (own || linked) B.push({ ms: ms, type: 'bill', bill: b, linked: !own });
+        });
+        d.merges.forEach(m => {
+            if (fbKeySafe(String(m.fromTable)) !== key) return;
+            const ms = tbMs(m.at);
+            if (ms) B.push({ ms: ms, type: 'merge', label: 'ย้ายยอดไปรวมกับโต๊ะ ' + m.toTable });
+        });
+        d.clears.forEach(c => {
+            if (fbKeySafe(String(c.table)) !== key) return;
+            const ms = tbMs(c.clearedAt);
+            if (ms) B.push({ ms: ms, type: 'clear', label: 'แอดมินล้างสถานะโต๊ะ' });
+        });
+        const lcMs = tbMs(d.lc[key]);
+        if (lcMs && !B.some(b => Math.abs(b.ms - lcMs) < 2000)) B.push({ ms: lcMs, type: 'lc', label: 'ปิดรอบโต๊ะ (จากเครื่องเก็บเงิน)' });
+        B.sort((a, b) => a.ms - b.ms);
+        return B;
+    }
+
+    function buildRounds(key, d) {
+        const os = d.orders.filter(o => o.key === key).sort((a, b) => a.ms - b.ms);
+        const lastO = os.length ? os[os.length - 1].ms : 0;
+        // ตัวแบ่งของวันนี้ หรือบิลที่ปิดหลังเที่ยงคืนแต่เปิดบิลไว้ตั้งแต่ก่อนออเดอร์สุดท้าย (รอบข้ามคืน)
+        const B = boundariesFor(key, d).filter(b => dayOf(b.ms) === d.date ||
+            (lastO && b.type === 'bill' && !b.linked && tbMs(b.bill.openedAt) && tbMs(b.bill.openedAt) <= lastO));
+
+        const groups = B.map(() => []).concat([[]]);
+        os.forEach(o => { let i = 0; while (i < B.length && B[i].ms < o.ms) i++; groups[i].push(o); });
+
+        const rounds = [];
+        groups.forEach((g, i) => {
+            const end = B[i] || null;
+            if (!g.length) {
+                // รอบที่มีบิลแต่ไม่มีออเดอร์ในระบบรับออเดอร์ (แคชเชียร์คีย์เอง) ยังแสดงให้เห็น
+                if (end && end.type === 'bill' && !end.linked && dayOf(end.ms) === d.date) {
+                    rounds.push({ orders: [], first: tbMs(end.bill.openedAt) || end.ms, last: end.ms, end: end });
+                }
+                return;
+            }
+            rounds.push({ orders: g, first: g[0].ms, last: g[g.length - 1].ms, end: end });
+        });
+
+        // จับคู่จำนวนคน (guestCounts) เข้ากับรอบ ตามช่วงเวลา
+        const gs = objVals(d.guests[key]).map(r => ({
+            ms: tbMs(r.startTs || r.updatedAt || r.lastTs), last: tbMs(r.lastTs), count: Number(r.count) || 0
+        })).filter(r => r.ms);
+        rounds.forEach((r, i) => {
+            const prev = rounds[i - 1], next = rounds[i + 1];
+            r.lo = prev ? (prev.end ? prev.end.ms : prev.last) : -Infinity;
+            r.hi = r.end ? r.end.ms : (next ? r.last : Infinity);
+            const mine = gs.filter(g => g.ms > r.lo && g.ms <= r.hi).sort((a, b) => b.last - a.last);
+            r.guests = mine.length ? mine[0].count : ((r.end && r.end.bill && Number(r.end.bill.guests)) || 0);
+        });
+        return rounds;
+    }
+
+    /* ---------- วาดหน้าจอ ---------- */
+    function compareTable(a, b) {
+        const na = /^\d+$/.test(a), nb = /^\d+$/.test(b);
+        if (na && nb) return Number(a) - Number(b);
+        if (na) return -1;
+        if (nb) return 1;
+        return a.localeCompare(b, 'th');
+    }
+
+    function tableKeys(d) {
+        const keys = {}, names = {};
+        d.orders.forEach(o => { keys[o.key] = 1; if (!names[o.key]) names[o.key] = o.table; });
+        d.bills.forEach(b => {
+            const ms = tbMs(b.closedAt);
+            if (!ms || dayOf(ms) !== d.date) return;
+            const k = fbKeySafe(String(b.table));
+            if (k) { keys[k] = 1; if (!names[k]) names[k] = String(b.table); }
+        });
+        return { list: Object.keys(keys).sort((a, b) => compareTable(names[a] || a, names[b] || b)), names: names };
+    }
+
+    window.thRenderChips = function () {
+        const box = $th('thChips');
+        if (!box) return;
+        const q = ($th('thFilter').value || '').trim().toLowerCase();
+        const keys = Object.keys(TH.rounds).filter(k => !q || String(TH.names[k] || k).toLowerCase().indexOf(q) >= 0);
+        if (!keys.length) {
+            box.innerHTML = '<span style="color:#aaa;font-size:15px;">' + (Object.keys(TH.rounds).length ? 'ไม่พบโต๊ะที่ค้นหา' : '') + '</span>';
+            return;
+        }
+        box.innerHTML = keys.map(k => {
+            const n = TH.rounds[k].length;
+            return '<button class="th-chip' + (TH.table === k ? ' on' : '') + '" data-k="' + escHtml(k) + '">' +
+                'โต๊ะ ' + escHtml(TH.names[k] || k) + '<small>' + (n || 0) + ' รอบ</small></button>';
+        }).join('');
+        box.querySelectorAll('button[data-k]').forEach(b => { b.onclick = () => { TH.table = b.dataset.k; window.thRenderChips(); renderResult(); }; });
+    };
+
+    function endBadge(r, d, isLast) {
+        const e = r.end;
+        if (e) {
+            if (e.type === 'bill' && !e.linked) {
+                const b = e.bill;
+                return '<span class="th-badge g">✅ ปิดบิล ' + hhmm(e.ms) + ' · ' + baht(b.total) + (b.method ? ' · ' + escHtml(b.method) : '') + '</span>';
+            }
+            if (e.type === 'bill') return '<span class="th-badge g">✅ ปิดพร้อมบิลโต๊ะ ' + escHtml(e.bill.table) + ' ' + hhmm(e.ms) + '</span>';
+            if (e.type === 'merge') return '<span class="th-badge o">🔀 ' + escHtml(e.label) + ' ' + hhmm(e.ms) + '</span>';
+            if (e.type === 'clear') return '<span class="th-badge r">🧹 ' + escHtml(e.label) + ' ' + hhmm(e.ms) + '</span>';
+            return '<span class="th-badge g">✅ ' + escHtml(e.label) + ' ' + hhmm(e.ms) + '</span>';
+        }
+        if (isLast) {
+            if (d.date === localDateStr() && typeof POS_OPEN !== 'undefined' && POS_OPEN[r.key]) return '<span class="th-badge o">💵 กำลังเก็บเงิน</span>';
+            if (d.date === localDateStr()) return '<span class="th-badge g">🟢 ยังไม่ปิดบิล (รอบปัจจุบัน)</span>';
+            return '<span class="th-badge">⚪ ไม่พบการปิดบิล</span>';
+        }
+        return '<span class="th-badge">⚪ ไม่พบการปิดบิล</span>';
+    }
+
+    function renderRound(r, idx, d, isLast) {
+        r.key = TH.table;
+        const agg = {}, order = [];
+        r.orders.forEach(o => {
+            if (!agg[o.item]) { agg[o.item] = { qty: 0, pend: 0 }; order.push(o.item); }
+            agg[o.item].qty += o.qty;
+            if (o.pending) agg[o.item].pend += o.qty;
+        });
+        const total = r.orders.reduce((s, o) => s + o.qty, 0);
+        const endMs = r.end ? r.end.ms : r.last;
+        const mins = Math.max(0, Math.round((endMs - r.first) / 60000));
+        const bill = r.end && r.end.type === 'bill' && !r.end.linked ? r.end.bill : null;
+
+        let cls = 'th-round';
+        if (!r.end && isLast && d.date === localDateStr()) cls += ' th-open';
+        else if (!r.end) cls += ' th-split';
+
+        let h = '<div class="' + cls + '"><div class="th-rh">' +
+            '<span class="th-rn">รอบที่ ' + (idx + 1) + '</span>' +
+            '<span class="th-rt">🕐 ' + hhmm(r.first) + ' – ' + hhmm(endMs) + ' (' + mins + ' นาที)</span>' +
+            (r.guests ? '<span class="th-rt">👥 ' + r.guests + ' คน</span>' : '') +
+            '<span class="th-rt">🍽️ ' + total + ' จาน</span></div>' +
+            '<div>' + endBadge(r, d, isLast) + '</div>';
+
+        if (r.orders.length) {
+            h += '<div class="th-items">' + order.map(n =>
+                '<span class="th-item">' + escHtml(n) + ' <b>×' + agg[n].qty + '</b>' + (agg[n].pend ? '<i>(ยังไม่เสิร์ฟ ' + agg[n].pend + ')</i>' : '') + '</span>').join('') + '</div>';
+
+            // รายละเอียดตามเวลาสั่ง (รวมแถวที่สั่งพร้อมกันและเหมือนกัน)
+            const rows = [], idxMap = {};
+            r.orders.forEach(o => {
+                const k = o.ms + '|' + o.item + '|' + o.comment + '|' + o.staff;
+                if (idxMap[k] == null) { idxMap[k] = rows.length; rows.push({ ms: o.ms, item: o.item, qty: 0, pend: 0, comment: o.comment, staff: o.staff }); }
+                const row = rows[idxMap[k]];
+                row.qty += o.qty;
+                if (o.pending) row.pend += o.qty;
+            });
+            h += '<details><summary>ดูรายละเอียดตามเวลาที่สั่ง (' + rows.length + ' รายการ)</summary>' +
+                rows.map(w => '<div class="th-row"><span class="tm">' + hhmm(w.ms) + '</span><span>' + escHtml(w.item) + ' ×' + w.qty +
+                    (w.pend ? ' <span style="color:#c0392b">(ยังไม่เสิร์ฟ ' + w.pend + ')</span>' : '') + '</span>' +
+                    (w.comment ? '<span class="cm">📝 ' + escHtml(w.comment) + '</span>' : '') +
+                    (w.staff ? '<span class="st">' + escHtml(w.staff) + '</span>' : '') + '</div>').join('') +
+                '</details>';
+        } else {
+            h += '<div class="th-note">ไม่มีออเดอร์ของรอบนี้ในระบบรับออเดอร์ (มีเฉพาะบิลที่แคชเชียร์คีย์เอง)</div>';
+        }
+
+        if (bill && Array.isArray(bill.items) && bill.items.length) {
+            h += '<details><summary>ดูรายการในบิลของเครื่องเก็บเงิน' + (bill.billNo ? ' (' + escHtml(bill.billNo) + ')' : '') + '</summary>' +
+                bill.items.map(it => '<div class="th-row"><span>' + escHtml(it.name) + ' ×' + (Number(it.qty) || 0) + '</span><span class="st">' +
+                    baht((Number(it.price) || 0) * (Number(it.qty) || 0)) + '</span></div>').join('') +
+                '<div class="th-row"><b>รวมสุทธิ ' + baht(bill.total) + '</b>' +
+                (Number(bill.discount) ? '<span class="cm">ส่วนลด ' + baht(bill.discount) + '</span>' : '') +
+                (bill.staff ? '<span class="st">แคชเชียร์: ' + escHtml(bill.staff) + '</span>' : '') + '</div></details>';
+        }
+        if (bill && bill.mergedFrom) h += '<div class="th-note">🔀 บิลนี้รวมยอดจากโต๊ะ: ' + escHtml(bill.mergedFrom) + '</div>';
+        if (bill && bill.note) h += '<div class="th-note">📝 ' + escHtml(bill.note) + '</div>';
+        return h + '</div>';
+    }
+
+    function renderResult() {
+        const box = $th('thResult');
+        if (!box) return;
+        const d = TH.data;
+        if (!d) { box.innerHTML = ''; return; }
+        if (!TH.table || !TH.rounds[TH.table]) {
+            box.innerHTML = '<div style="text-align:center;color:#999;padding:30px 0;font-size:16px;">👆 เลือกโต๊ะด้านบนเพื่อดูประวัติแต่ละรอบ</div>';
+            return;
+        }
+        const rounds = TH.rounds[TH.table];
+        let h = '';
+        if (!d.billsOk) h += '<div class="th-warn">⚠️ อ่านข้อมูลบิลจากเครื่องเก็บเงินไม่ได้ จึงแบ่งรอบจากเวลาล่าสุดที่ปิดโต๊ะ/ช่วงห่างของออเดอร์เท่านั้น</div>';
+        h += '<div style="font-size:18px;font-weight:800;color:#3b1f6b;margin:6px 0 10px;">โต๊ะ ' + escHtml(TH.names[TH.table] || TH.table) +
+            ' · วันที่ ' + escHtml(d.date) + ' · ทั้งหมด ' + rounds.length + ' รอบ</div>';
+        h += rounds.map((r, i) => renderRound(r, i, d, i === rounds.length - 1)).join('');
+        box.innerHTML = h;
+    }
+
+    async function reload() {
+        const my = ++TH.seq;
+        const date = $th('thDatePicker').value || localDateStr();
+        TH.date = date;
+        $th('thStatus').textContent = '⏳ กำลังโหลด...';
+        $th('thChips').innerHTML = '';
+        $th('thResult').innerHTML = '';
+        let d;
+        try { d = await loadDay(date); }
+        catch (e) {
+            if (my !== TH.seq) return;
+            $th('thStatus').textContent = '❌ โหลดไม่สำเร็จ: ' + (e && e.message ? e.message : e);
+            return;
+        }
+        if (my !== TH.seq) return;   // เปลี่ยนวันระหว่างโหลด ทิ้งผลเก่า
+        const t = tableKeys(d);
+        TH.data = d; TH.names = t.names; TH.rounds = {};
+        t.list.forEach(k => { TH.rounds[k] = buildRounds(k, d); });
+        if (TH.table && !TH.rounds[TH.table]) TH.table = null;
+        const total = t.list.length;
+        $th('thStatus').textContent = total
+            ? 'พบ ' + total + ' โต๊ะที่มีการสั่งในวันนี้ · กดเลือกโต๊ะเพื่อดูแต่ละรอบ'
+            : 'ไม่พบออเดอร์ของวันที่เลือก (ข้อมูลที่เก่ากว่าที่บีบอัดไว้จะไม่มีรายละเอียดรายโต๊ะ)';
+        window.thRenderChips();
+        renderResult();
+    }
+
+    window.thReload = reload;
+    window.thToday = function () { $th('thDatePicker').value = localDateStr(); reload(); };
+    window.thShiftDay = function (n) {
+        $th('thDatePicker').value = addDays($th('thDatePicker').value || localDateStr(), n);
+        reload();
+    };
+    window.openTableHistory = function () {
+        $th('tableHistoryModal').style.display = 'block';
+        $th('thDatePicker').value = localDateStr();
+        $th('thFilter').value = '';
+        TH.table = null;
+        reload();
+    };
+    window.closeTableHistory = function () { $th('tableHistoryModal').style.display = 'none'; TH.seq++; };
+
+    window.__thTest = { buildRounds: buildRounds };   // ไว้ทดสอบเท่านั้น ไม่มีผลกับการทำงาน
+})();
+/* ================= จบ ประวัติรอบโต๊ะ ================= */
 </script>
 </body>
 </html>
