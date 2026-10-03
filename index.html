@@ -1072,6 +1072,7 @@ window.addEventListener('DOMContentLoaded', () => {
       <button onclick="closeOwnerMenu(); openRevenue();" style="background:linear-gradient(135deg,#2980b9,#3498db); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📈 สรุปยอดขายเงิน</button>
       <button onclick="closeOwnerMenu(); openTableHistory();" style="background:linear-gradient(135deg,#6c3fb5,#8e5fd6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🕒 ประวัติรอบโต๊ะ</button>
       <button onclick="closeOwnerMenu(); openUnsoldMenu();" style="background:linear-gradient(135deg,#7f8c8d,#95a5a6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">📉 เมนูที่ขายไม่ได้</button>
+      <button onclick="closeOwnerMenu(); openSalesCount();" style="background:linear-gradient(135deg,#d35400,#e67e22); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🧮 ยอดขายแยกเมนู/หมวด</button>
       <button onclick="closeOwnerMenu(); openMenuManager();" style="background:linear-gradient(135deg,#e67e22,#f39c12); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🍽️ จัดการเมนู</button>
       <button onclick="closeOwnerMenu(); openAccessCodeSetting();" style="background:linear-gradient(135deg,#e74c3c,#c0392b); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🔑 ตั้งรหัสเข้าใช้งาน</button>
       <button onclick="closeOwnerMenu(); openChangePin();" style="background:linear-gradient(135deg,#8e44ad,#9b59b6); color:white; border:none; padding:16px; border-radius:10px; font-size:18px; cursor:pointer;">🔐 เปลี่ยน PIN</button>
@@ -5636,5 +5637,331 @@ function addPreset() {
 })();
 /* ================= จบ ประวัติรอบโต๊ะ ================= */
 </script>
+<!-- ================= Modal ยอดขายแยกเมนู/หมวด (เจ้าของ) =================
+     อ่านอย่างเดียว — ไม่เขียนหรือแก้ข้อมูลใดๆ ใน Firebase -->
+<style>
+.summary-tab-sc-active { background:#d35400 !important; color:white !important; border-color:#d35400 !important; }
+#salesCountModal .sc-wrap { text-align:left; font-size:16px; }
+.sc-viewbtn { background:#f1f3f5; border:2px solid #ddd; padding:8px 16px; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; color:#555; font-family:inherit; }
+.sc-viewbtn.on { background:#d35400; border-color:#d35400; color:#fff; }
+.sc-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #eef0f2; }
+.sc-row:nth-child(even) { background:#fafbfc; }
+.sc-rank { width:30px; text-align:center; color:#999; font-size:14px; flex-shrink:0; }
+.sc-name { flex:1; min-width:0; font-size:16px; font-weight:600; color:#2c3e50; word-break:break-word; }
+.sc-cm { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.sc-chip { background:#fff3e0; color:#b35a00; border:1px solid #f5cf9b; border-radius:12px; padding:1px 8px; font-size:12px; font-weight:600; }
+.sc-bar { width:90px; height:12px; background:#e9ecef; border-radius:6px; overflow:hidden; flex-shrink:0; }
+.sc-bar > div { height:100%; background:#e67e22; border-radius:6px; }
+.sc-qty { min-width:62px; text-align:right; font-size:20px; font-weight:800; color:#d35400; flex-shrink:0; }
+.sc-qty small { font-size:12px; font-weight:600; color:#999; margin-left:2px; }
+.sc-cat { background:#fff; border:1px solid #e9ecef; border-radius:10px; margin-bottom:10px; overflow:hidden; }
+.sc-cat > summary { list-style:none; cursor:pointer; padding:12px 14px; display:flex; align-items:center; gap:10px; background:#fdf3e7; font-weight:800; color:#2c3e50; font-size:17px; }
+.sc-cat > summary::-webkit-details-marker { display:none; }
+.sc-cat > summary .sc-cname { flex:1; min-width:0; }
+.sc-cat > summary .sc-ctotal { color:#d35400; font-size:20px; }
+.sc-cat > summary .sc-csub { font-size:12px; font-weight:600; color:#999; }
+.sc-note { font-size:12px; color:#888; margin-top:10px; line-height:1.5; }
+@media (max-width:520px) { .sc-bar { display:none; } }
+</style>
+<div id="salesCountModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); z-index:2000; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div class="sc-wrap" style="background:#f8f9fa; max-width:780px; margin:20px auto 40px; border-radius:16px; padding:0; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.25); overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#b34700,#e67e22); padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="color:white; font-size:22px; font-weight:bold;">🧮 ยอดขายแยกเมนู / หมวด</div>
+        <div style="color:rgba(255,255,255,0.8); font-size:13px; margin-top:3px;">ดูว่าแต่ละเมนู/หมวดขายได้กี่จาน — พิมพ์ค้นหาแล้วรวมยอดให้อัตโนมัติ</div>
+      </div>
+      <button onclick="closeSalesCount()" style="background:rgba(255,255,255,0.2); border:none; color:white; font-size:22px; width:40px; height:40px; border-radius:50%; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="background:white; padding:14px 20px; border-bottom:1px solid #e9ecef; display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="scTabDay"   onclick="scSetMode('day')"   class="summary-tab summary-tab-sc-active">📅 รายวัน</button>
+      <button id="scTabWeek"  onclick="scSetMode('week')"  class="summary-tab">📆 สัปดาห์นี้</button>
+      <button id="scTabMonth" onclick="scSetMode('month')" class="summary-tab">🗓️ เดือนนี้</button>
+      <button id="scTabRange" onclick="scSetMode('range')" class="summary-tab">🔍 กำหนดเอง</button>
+    </div>
+
+    <!-- Date controls -->
+    <div style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef;">
+      <div id="scCtrlDay" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">เลือกวัน:</label>
+        <input type="date" id="scDatePicker" style="font-size:16px; padding:7px 12px; border:2px solid #d35400; border-radius:8px;" onchange="scReload()">
+        <button onclick="scToday()" style="background:#d35400; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">วันนี้</button>
+        <button onclick="scShiftDay(-1)" style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;" title="วันก่อนหน้า">◀</button>
+        <button onclick="scShiftDay(1)"  style="background:#ecf0f1; border:none; padding:8px 13px; border-radius:8px; font-size:18px; cursor:pointer;" title="วันถัดไป">▶</button>
+      </div>
+      <div id="scCtrlRange" style="display:none; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ตั้งแต่:</label>
+        <input type="date" id="scRangeStart" style="font-size:16px; padding:7px 12px; border:2px solid #d35400; border-radius:8px;">
+        <label style="font-size:16px; color:#555; font-weight:600;">ถึง:</label>
+        <input type="date" id="scRangeEnd" style="font-size:16px; padding:7px 12px; border:2px solid #d35400; border-radius:8px;">
+        <button onclick="scReload()" style="background:#d35400; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:15px; cursor:pointer; font-weight:600;">ดูข้อมูล</button>
+      </div>
+    </div>
+
+    <!-- Search + view -->
+    <div style="background:white; padding:12px 20px; border-bottom:1px solid #e9ecef;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <input type="text" id="scSearch" placeholder="🔍 พิมพ์ชื่อเมนูหรือหมายเหตุ เช่น ปลา, นึ่ง, ปลา ใหญ่" autocomplete="off"
+               oninput="scRender()" style="flex:1; min-width:180px; font-size:16px; padding:9px 12px; border:2px solid #d35400; border-radius:8px; box-sizing:border-box; font-family:inherit;">
+        <button id="scViewMenu" class="sc-viewbtn on" onclick="scSetView('menu')">🍽️ ตามเมนู</button>
+        <button id="scViewCat"  class="sc-viewbtn"    onclick="scSetView('cat')">🗂️ ตามหมวด</button>
+        <button onclick="scReload()" class="sc-viewbtn" title="โหลดข้อมูลใหม่">🔄</button>
+      </div>
+      <div style="font-size:12px; color:#888; margin-top:6px;">คำค้นหลายคำ (เว้นวรรค) = ต้องตรงทุกคำ โดยค้นทั้งชื่อเมนูและหมายเหตุที่พนักงานพิมพ์</div>
+    </div>
+
+    <!-- Content -->
+    <div id="scContent" style="padding:20px;">
+      <p style="color:#888; font-size:16px; text-align:center; padding:30px 0;">กำลังเตรียมข้อมูล...</p>
+    </div>
+  </div>
+</div>
+<script>
+/* ================= ยอดขายแยกเมนู/หมวด (เจ้าของ) =================
+   อ่านอย่างเดียว ใช้แหล่งข้อมูลเดียวกับ "สรุปยอดรายวัน"
+   (orders + completedOrders + dailySnapshots) จึงตัวเลขตรงกัน */
+(function () {
+    const SC = { mode: 'day', view: 'menu', seq: 0, entries: [], range: null, loaded: false };
+    function $sc(id) { return document.getElementById(id); }
+    function addDays(ds, n) {
+        const p = ds.split('-').map(Number);
+        return localDateStr(new Date(p[0], p[1] - 1, p[2] + n));
+    }
+
+    function getRange() {
+        const today = localDateStr();
+        let s, e, label, days;
+        if (SC.mode === 'day') {
+            s = e = $sc('scDatePicker').value || today;
+            label = formatThaiDate(s); days = 1;
+        } else if (SC.mode === 'week') {
+            const n = new Date();
+            const mon = new Date(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7));
+            s = localDateStr(mon); e = addDays(s, 6);
+            label = formatThaiDate(s) + ' — ' + formatThaiDate(e); days = 7;
+        } else if (SC.mode === 'month') {
+            const n = new Date();
+            const y = n.getFullYear(), m = n.getMonth();
+            const last = new Date(y, m + 1, 0).getDate();
+            s = y + '-' + pad2(m + 1) + '-01';
+            e = y + '-' + pad2(m + 1) + '-' + pad2(last);
+            label = n.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }); days = last;
+        } else {
+            s = $sc('scRangeStart').value; e = $sc('scRangeEnd').value;
+            if (!s || !e) return null;
+            if (s > e) { const t = s; s = e; e = t; }
+            label = formatThaiDate(s) + ' — ' + formatThaiDate(e);
+            days = Math.round((new Date(e + 'T12:00:00') - new Date(s + 'T12:00:00')) / 86400000) + 1;
+        }
+        return { s: s, e: e, start: s + 'T00:00:00', end: e + 'T23:59:59.999', label: label, days: days };
+    }
+
+    function reload() {
+        const r = getRange();
+        if (!r) { $sc('scContent').innerHTML = '<p style="color:#e67e22;text-align:center;padding:30px 0;">เลือกวันที่เริ่มต้นและสิ้นสุดก่อนครับ</p>'; return; }
+        const my = ++SC.seq;
+        SC.loaded = false;
+        $sc('scContent').innerHTML = '<p style="color:#888; text-align:center; padding:30px 0; font-size:16px;">⏳ กำลังโหลด...</p>';
+
+        Promise.all([
+            db.ref(BASE_PATH + 'orders').once('value'),
+            db.ref(BASE_PATH + 'completedOrders').orderByChild('timestamp').startAt(r.start).endAt(r.end).once('value'),
+            db.ref(BASE_PATH + 'dailySnapshots').orderByKey().startAt(r.s).endAt(r.e).once('value')
+        ]).then(function (res) {
+            if (my !== SC.seq) return;   // เปลี่ยนช่วงเวลาระหว่างโหลด ทิ้งผลเก่า
+            const map = new Map();
+            function add(item, comment, qty) {
+                item = String(item || '').trim();
+                if (!item || !(qty > 0)) return;
+                comment = String(comment || '').trim();
+                const k = item + '\u0001' + comment;
+                const cur = map.get(k);
+                if (cur) cur.qty += qty; else map.set(k, { item: item, comment: comment, qty: qty });
+            }
+            function tally(snap) {
+                if (!snap.exists()) return;
+                Object.values(snap.val()).forEach(function (o) {
+                    if (!o || !o.item) return;
+                    const ts = String(o.timestamp || o.completedAt || '');
+                    if (!ts || ts < r.start || ts > r.end) return;
+                    add(o.item, o.comment, Number(o.quantity) || 1);
+                });
+            }
+            tally(res[0]); tally(res[1]);
+            // ข้อมูลเก่าที่ถูกบีบอัดเป็น snapshot รายวัน (key = "เมนู__หมายเหตุ")
+            if (res[2].exists()) {
+                Object.values(res[2].val()).forEach(function (snap) {
+                    if (!snap || !snap.items) return;
+                    Object.keys(snap.items).forEach(function (rawKey) {
+                        const parts = String(rawKey).split('__');
+                        add(parts[0], parts.slice(1).join('__'), Number(snap.items[rawKey]) || 0);
+                    });
+                });
+            }
+            SC.entries = Array.from(map.values());
+            SC.range = r;
+            SC.loaded = true;
+            render();
+        }).catch(function (err) {
+            if (my !== SC.seq) return;
+            $sc('scContent').innerHTML = '<p style="color:red; padding:20px;">❌ เกิดข้อผิดพลาด: ' + escHtml(err && err.message ? err.message : err) + '</p>';
+        });
+    }
+
+    function statCard(bg, label, value, unit) {
+        return '<div class="summary-stat-card" style="background:' + bg + ';"><div class="summary-stat-label">' + label +
+            '</div><div class="summary-stat-value">' + value + '</div><div class="summary-stat-unit">' + unit + '</div></div>';
+    }
+
+    function itemRow(a, rank, max) {
+        const pct = max > 0 ? Math.max(3, Math.round(a.qty / max * 100)) : 0;
+        const cms = Array.from(a.cms.entries()).sort(function (x, y) { return y[1] - x[1]; });
+        const hasComment = cms.some(function (c) { return c[0] !== ''; });
+        const chips = hasComment
+            ? '<div class="sc-cm">' + cms.map(function (c) {
+                return '<span class="sc-chip">' + escHtml(c[0] || '(ไม่มีหมายเหตุ)') + ' ×' + c[1] + '</span>';
+            }).join('') + '</div>'
+            : '';
+        return '<div class="sc-row"><div class="sc-rank">' + rank + '</div>' +
+            '<div class="sc-name">' + escHtml(a.item) + chips + '</div>' +
+            '<div class="sc-bar"><div style="width:' + pct + '%"></div></div>' +
+            '<div class="sc-qty">' + a.qty + '<small>จาน</small></div></div>';
+    }
+
+    function render() {
+        if (!SC.loaded) return;
+        const box = $sc('scContent');
+        const q = ($sc('scSearch').value || '').trim().toLowerCase();
+        const tokens = q.split(/\s+/).filter(Boolean);
+
+        let list = SC.entries;
+        if (tokens.length) {
+            list = list.filter(function (e) {
+                const h = (e.item + ' ' + e.comment).toLowerCase();
+                return tokens.every(function (t) { return h.indexOf(t) >= 0; });
+            });
+        }
+
+        // รวมตามเมนู (เก็บยอดแยกตามหมายเหตุไว้โชว์)
+        const byItem = new Map();
+        list.forEach(function (e) {
+            let a = byItem.get(e.item);
+            if (!a) { a = { item: e.item, qty: 0, cms: new Map() }; byItem.set(e.item, a); }
+            a.qty += e.qty;
+            a.cms.set(e.comment, (a.cms.get(e.comment) || 0) + e.qty);
+        });
+        const items = Array.from(byItem.values()).sort(function (a, b) {
+            return (b.qty - a.qty) || a.item.localeCompare(b.item, 'th');
+        });
+        const total = items.reduce(function (s, a) { return s + a.qty; }, 0);
+        const r = SC.range;
+
+        let html = '<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">' +
+            '<div class="summary-stat-card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);"><div class="summary-stat-label">📅 ช่วงเวลา</div>' +
+            '<div style="font-size:14px; font-weight:600; margin-top:4px; line-height:1.3;">' + escHtml(r.label) + '</div></div>' +
+            statCard('linear-gradient(135deg,#d35400,#e67e22)', tokens.length ? '🔍 ตรงกับคำค้น' : 'จานทั้งหมด', total, 'จาน') +
+            statCard('linear-gradient(135deg,#2980b9,#3498db)', 'เมนูที่ขายได้', items.length, 'เมนู') +
+            (r.days > 1 ? statCard('linear-gradient(135deg,#27ae60,#2ecc71)', 'เฉลี่ยต่อวัน', (total / r.days).toFixed(1), 'จาน/วัน') : '') +
+            '</div>';
+
+        if (!items.length) {
+            box.innerHTML = html + '<p style="color:#e74c3c; font-size:17px; text-align:center; padding:26px 0;">' +
+                (tokens.length ? 'ไม่พบออเดอร์ที่ตรงกับ “' + escHtml(q) + '” ในช่วงเวลานี้ครับ' : 'ไม่พบออเดอร์ในช่วงเวลาที่เลือกครับ') + '</p>';
+            return;
+        }
+
+        if (SC.view === 'menu') {
+            const max = items[0].qty;
+            html += '<div style="background:white; border-radius:10px; overflow:hidden; border:1px solid #e9ecef;">' +
+                items.map(function (a, i) { return itemRow(a, i + 1, max); }).join('') + '</div>';
+        } else {
+            // จัดกลุ่มตามหมวด (เมนูที่อยู่หลายหมวดจะโชว์ในทุกหมวดนั้น แต่ยอดรวมด้านบนนับครั้งเดียว)
+            const catOf = new Map();
+            Object.keys(menuCategories || {}).forEach(function (cat) {
+                (menuCategories[cat] || []).forEach(function (n) {
+                    if (!catOf.has(n)) catOf.set(n, []);
+                    if (catOf.get(n).indexOf(cat) < 0) catOf.get(n).push(cat);
+                });
+            });
+            const ORPHAN = 'ไม่อยู่ในหมวดใดแล้ว (เมนูที่ลบ/เปลี่ยนชื่อไปแล้ว)';
+            const groups = new Map();
+            Object.keys(menuCategories || {}).forEach(function (cat) { groups.set(cat, { total: 0, items: [] }); });
+            let multi = false;
+            items.forEach(function (a) {
+                const cats = catOf.get(a.item) || [ORPHAN];
+                if (cats.length > 1) multi = true;
+                cats.forEach(function (c) {
+                    if (!groups.has(c)) groups.set(c, { total: 0, items: [] });
+                    const g = groups.get(c);
+                    g.total += a.qty; g.items.push(a);
+                });
+            });
+            const open = tokens.length ? ' open' : '';
+            html += Array.from(groups.entries()).filter(function (kv) { return kv[1].items.length; })
+                .sort(function (x, y) { return y[1].total - x[1].total; })
+                .map(function (kv) {
+                    const g = kv[1], max = g.items[0].qty;
+                    return '<details class="sc-cat"' + open + '><summary><span class="sc-cname">📂 ' + escHtml(kv[0]) +
+                        ' <span class="sc-csub">' + g.items.length + ' เมนู</span></span>' +
+                        '<span class="sc-ctotal">' + g.total + ' <span class="sc-csub">จาน</span></span></summary>' +
+                        g.items.map(function (a, i) { return itemRow(a, i + 1, max); }).join('') + '</details>';
+                }).join('');
+            html += '<div class="sc-note">แตะที่ชื่อหมวดเพื่อดูรายเมนูข้างใน' +
+                (multi ? ' · เมนูที่อยู่หลายหมวดจะแสดงในทุกหมวดที่อยู่ แต่ยอด “จานทั้งหมด” ด้านบนนับครั้งเดียว' : '') + '</div>';
+        }
+
+        html += '<div class="sc-note">ข้อมูลรวมออเดอร์ที่ยังอยู่ในคิว + ที่ส่งแล้ว + ข้อมูลเก่าที่บีบอัดแล้ว (แหล่งเดียวกับ “สรุปยอดรายวัน”) · ' +
+            'ถ้าอยากรู้เฉพาะบางประเภท เช่น ปลาตัวใหญ่ ให้พิมพ์ค้นหา เช่น “ปลา ใหญ่”</div>';
+        box.innerHTML = html;
+    }
+
+    function setMode(mode) {
+        SC.mode = mode;
+        ['day', 'week', 'month', 'range'].forEach(function (m) {
+            const t = $sc('scTab' + m.charAt(0).toUpperCase() + m.slice(1));
+            if (t) t.className = 'summary-tab' + (m === mode ? ' summary-tab-sc-active' : '');
+        });
+        $sc('scCtrlDay').style.display = (mode === 'day') ? 'flex' : 'none';
+        $sc('scCtrlRange').style.display = (mode === 'range') ? 'flex' : 'none';
+        if (mode === 'day') {
+            if (!$sc('scDatePicker').value) $sc('scDatePicker').value = localDateStr();
+            reload();
+        } else if (mode === 'week' || mode === 'month') {
+            reload();
+        } else {
+            if (!$sc('scRangeStart').value) $sc('scRangeStart').value = addDays(localDateStr(), -6);
+            if (!$sc('scRangeEnd').value) $sc('scRangeEnd').value = localDateStr();
+            reload();
+        }
+    }
+
+    window.openSalesCount = function () {
+        $sc('salesCountModal').style.display = 'block';
+        $sc('scSearch').value = '';
+        $sc('scDatePicker').value = localDateStr();
+        setMode('day');
+    };
+    window.closeSalesCount = function () { $sc('salesCountModal').style.display = 'none'; SC.seq++; };
+    window.scSetMode = setMode;
+    window.scReload = reload;
+    window.scRender = render;
+    window.scToday = function () { $sc('scDatePicker').value = localDateStr(); reload(); };
+    window.scShiftDay = function (n) {
+        $sc('scDatePicker').value = addDays($sc('scDatePicker').value || localDateStr(), n);
+        reload();
+    };
+    window.scSetView = function (v) {
+        SC.view = v;
+        $sc('scViewMenu').className = 'sc-viewbtn' + (v === 'menu' ? ' on' : '');
+        $sc('scViewCat').className = 'sc-viewbtn' + (v === 'cat' ? ' on' : '');
+        render();
+    };
+})();
+/* ================= จบ ยอดขายแยกเมนู/หมวด ================= */
+</script>
+
 </body>
 </html>
