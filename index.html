@@ -4741,11 +4741,25 @@ function saveReservation() {
 }
 
 // ลูกค้าจองมาถึงร้านแล้ว → ถามโต๊ะ แล้วโอนออเดอร์เข้าคิวครัว
-function markReservationArrived(resId, resData) {
+async function markReservationArrived(resId, resData) {
+    if (_guestBusy) return;   // กันกดซ้ำระหว่างเปิดหน้าต่างถามจำนวนคน
     const table = prompt(`ลูกค้า "${resData.name}" มาถึงแล้ว!\nจะนั่งโต๊ะไหนครับ?`, '');
     if (table === null || table.trim() === '') return; // กด Cancel หรือไม่ใส่
 
     const tableStr = table.trim();
+
+    // ✅ เพิ่มใหม่: ถามจำนวนคนตอนลูกค้าจองมาถึง (ใช้ระบบเดียวกับการสั่งโต๊ะปกติ)
+    // - ถ้าโต๊ะนี้มีรอบที่บันทึกจำนวนคนไว้แล้ว จะไม่ถามซ้ำ
+    // - ถ้ากดยกเลิก = ยังไม่ถือว่าลูกค้ามาถึง ไม่ส่งออเดอร์ ไม่เปลี่ยนสถานะการจอง (กดมาถึงใหม่ได้)
+    if (isDineInTable(tableStr)) {
+        _guestBusy = true;
+        let ok = false;
+        try { ok = await ensureGuestCount(tableStr); }
+        catch (e) { console.warn(e); ok = true; }   // ระบบพัง = ไม่บล็อกการทำงาน
+        finally { _guestBusy = false; }
+        if (!ok) return;
+    }
+
     const staffName = localStorage.getItem('staff_name') || '';
     const now = localStamp(new Date());
 
