@@ -2092,8 +2092,8 @@ function insertOrderRow(tbody, o, displayQty, isReady, mins, unitFlag) {
             if (done) return;
             const newTable = input.value.trim();
             if (newTable && newTable !== currentTable) {
-                moveAllTableData(currentTable, newTable);
-                restoreLabel(newTable);
+                restoreLabel(currentTable); // คืนป้ายเดิมก่อน แล้วค่อยอัปเดตผ่าน Firebase/Modal
+                smartMoveTable(currentTable, newTable, { focusOrderId: o.id, focusBatchTs: o.timestamp });
             } else {
                 restoreLabel(currentTable);
             }
@@ -2232,10 +2232,421 @@ function updateKitchenDisplay() {
 function changeTableName(){
     const o=document.getElementById('oldTableName').value.trim(), n=document.getElementById('newTableName').value.trim();
     if(o&&n){
-        if (o !== n) moveAllTableData(o, n);
+        if (o !== n) smartMoveTable(o, n);
         document.getElementById('oldTableName').value=''; document.getElementById('newTableName').value='';
     }
 }
+
+/* ================= ระบบย้ายโต๊ะอัจฉริยะ (Smart Table Move / Split Batches) =================
+   - ถ้าย้ายปกติที่มีออเดอร์แค่รอบเวลาเดียว -> ย้ายทั้งหมดทันที ไม่เด้งกวนใจ
+   - ถ้าโต๊ะต้นทางมีออเดอร์สั่งคนละช่วงเวลา (เช่น ลูกค้าเก่าย้ายโต๊ะไม่บอก แล้วลูกค้าใหม่มานั่งซ้ำ)
+     หรือคลิกแก้ไขชื่อโต๊ะจากตารางคิว -> เด้งหน้าต่างให้เลือกย้ายเฉพาะชุดเก่า / ย้ายทั้งหมด / เลือกรายการเองได้ทันที */
+const BATCH_SPLIT_GAP_MS = 60 * 1000; // ห่างกันเกิน 1 นาที ถือเป็นคนละชุดการสั่ง (Batch)
+
+function collectActiveTableItems(tableName, oldClosedMs) {
+    const todayStr = localDateStr();
+    const list = [];
+
+    (orders || []).forEach(d => {
+        if (!d || d.table !== tableName) return;
+        const ms = tsMs(d.timestamp);
+        list.push({
+            type: 'pending',
+            key: d.id,
+            item: d.item,
+            quantity: Number(d.quantity) || 1,
+            comment: d.comment || '',
+            timestamp: d.timestamp || '',
+            ms: ms || Date.now(),
+            status: d.status || 'pending'
+        });
+    });
+
+    (completedOrdersWithKeys || []).forEach(({ key, data }) => {
+        if (!data || data.table !== tableName) return;
+        const ts = data.timestamp || data.completedAt;
+        if (!ts || String(ts).slice(0, 10) !== todayStr) return;
+        const ms = tsMs(ts);
+        if (oldClosedMs && ms <= oldClosedMs) return;
+        list.push({
+            type: 'completed',
+            key: key,
+            item: data.item,
+            quantity: Number(data.quantity) || 1,
+            comment: data.comment || '',
+            timestamp: data.timestamp || ts,
+            ms: ms || Date.now(),
+            status: 'served'
+        });
+    });
+
+    list.sort((a, b) => a.ms - b.ms);
+    return list;
+}
+
+function groupTableItemsIntoBatches(items) {
+    const batches = [];
+    items.forEach(it => {
+        const lastBatch = batches[batches.length - 1];
+        if (!lastBatch || (it.ms - lastBatch.lastMs) > BATCH_SPLIT_GAP_MS) {
+            batches.push({
+                index: batches.length,
+                firstMs: it.ms,
+                lastMs: it.ms,
+                items: [it]
+            });
+        } else {
+            lastBatch.lastMs = Math.max(lastBatch.lastMs, it.ms);
+            lastBatch.items.push(it);
+        }
+    });
+    return batches;
+}
+
+function formatBatchTime(ms) {
+    if (!ms) return '--:--';
+    const d = new Date(ms);
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ' น.';
+}
+
+function closeSmartMoveModal() {
+    const el = document.getElementById('smartMoveModal');
+    if (el) el.remove();
+}
+
+async function smartMoveTable(oldName, newName, opts) {
+    opts = opts || {};
+    const oldKey = fbKeySafe(oldName), newKey = fbKeySafe(newName);
+    if (!oldKey || !newKey || oldName === newName) return;
+
+    let oldClosedMs = 0;
+    try {
+        const oldLcSnap = await db.ref(POS_PATH + 'lastClosed/' + oldKey).once('value');
+        oldClosedMs = tsMs(oldLcSnap.val() || '');
+    } catch (e) {}
+
+    const items = collectActiveTableItems(oldName, oldClosedMs);
+    if (items.length === 0) {
+        alert('ไม่พบรายการอาหารของ โต๊ะ ' + oldName + ' ในรอบปัจจุบันครับ');
+        return;
+    }
+
+    const batches = groupTableItemsIntoBatches(items);
+
+    // กรณีมีแค่ 1 ชุดเวลาสั่ง และไม่ได้ดับเบิลคลิกเจาะจงบรรทัดที่มีหลายรายการ -> ย้ายทั้งโต๊ะทันที ไม่ต้องเด้งถาม
+    if (batches.length <= 1 && !opts.focusOrderId) {
+        return moveAllTableData(oldName, newName);
+    }
+    // ถ้ามีแค่ 1 ชุดเวลาสั่ง และมีแค่ 1 รายการในโต๊ะ -> ย้ายทันทีเช่นกัน
+    if (items.length <= 1) {
+        return moveAllTableData(oldName, newName);
+    }
+
+    openSmartMoveModal(oldName, newName, items, batches, opts);
+}
+
+function openSmartMoveModal(oldName, newName, items, batches, opts) {
+    closeSmartMoveModal();
+    const wrap = document.createElement('div');
+    wrap.id = 'smartMoveModal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.68);z-index:99998;display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto;box-sizing:border-box;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:18px;max-width:540px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 14px 44px rgba(0,0,0,.4);overflow:hidden;text-align:left;font-family:Arial,sans-serif;';
+
+    const hasMultipleBatches = batches.length > 1;
+    // คำนวณรายการของ "ชุดเก่าทั้งหมด (ยกเว้นชุดล่าสุด)" สำหรับกรณีย้ายโต๊ะที่ลูกค้าใหม่มานั่งซ้ำ
+    const olderBatchesItems = hasMultipleBatches
+        ? batches.slice(0, batches.length - 1).reduce((acc, b) => acc.concat(b.items), [])
+        : [];
+    const latestBatch = batches[batches.length - 1];
+
+    // ตั้งค่าเริ่มต้นว่าจะติ๊กรายการไหนไว้ให้ก่อน
+    const defaultSelectedKeys = new Set();
+    if (hasMultipleBatches) {
+        // ถ้ามาจากการดับเบิลคลิกแถวใดแถวหนึ่ง ให้ติ๊กชุด (Batch) ของแถวนั้นเป็นค่าเริ่มต้น
+        let matchedBatch = null;
+        if (opts && opts.focusOrderId) {
+            matchedBatch = batches.find(b => b.items.some(it => it.type === 'pending' && it.key === opts.focusOrderId));
+        }
+        if (matchedBatch) {
+            matchedBatch.items.forEach(it => defaultSelectedKeys.add(it.type + ':' + it.key));
+        } else {
+            // ถ้ากดปุ่มย้ายโต๊ะด้านล่าง ให้ติ๊ก "ชุดเก่า" เป็นค่าเริ่มต้น (เพราะเคสส่วนใหญ่คือย้ายลูกค้าเก่าออก ทิ้งลูกค้าใหม่ไว้)
+            olderBatchesItems.forEach(it => defaultSelectedKeys.add(it.type + ':' + it.key));
+        }
+    } else {
+        // มีชุดเดียวแต่ดับเบิลคลิกที่แถว -> ติ๊ก全部ไว้ก่อนแต่มีปุ่มเลือกเฉพาะแถวที่คลิก
+        items.forEach(it => defaultSelectedKeys.add(it.type + ':' + it.key));
+    }
+
+    const headerHtml = `
+      <div style="background:linear-gradient(135deg,#d35400,#e67e22);padding:16px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:21px;font-weight:bold;">🔀 ย้ายรายการ โต๊ะ ${escHtml(oldName)} ➜ โต๊ะ ${escHtml(newName)}</div>
+          <div style="font-size:13px;opacity:0.92;margin-top:3px;">
+            ${hasMultipleBatches
+              ? `พบออเดอร์สั่งต่างเวลากัน ${batches.length} รอบ — เลือกย้ายเฉพาะลูกค้าเก่า หรือย้ายทั้งหมดได้เลย`
+              : `เลือกรายการอาหารที่ต้องการย้ายไป โต๊ะ ${escHtml(newName)}`}
+          </div>
+        </div>
+        <button id="smCloseBtn" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;">✕</button>
+      </div>
+    `;
+
+    // ปุ่มทางลัดด้านบน (Quick Actions)
+    let quickBtnsHtml = `<div style="padding:14px 18px 8px;background:#fff8f0;border-bottom:1px solid #f3e2d0;display:flex;flex-direction:column;gap:8px;">`;
+    if (hasMultipleBatches) {
+        const olderCount = olderBatchesItems.reduce((s, x) => s + x.quantity, 0);
+        const latestTime = formatBatchTime(latestBatch.firstMs);
+        const olderTimeLabel = batches.length === 2
+            ? formatBatchTime(batches[0].firstMs)
+            : `${formatBatchTime(batches[0].firstMs)} – ${formatBatchTime(batches[batches.length - 2].lastMs)}`;
+
+        quickBtnsHtml += `
+          <button id="smQuickOlderBtn" style="background:#e67e22;color:#fff;border:none;padding:12px 14px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 8px rgba(230,126,34,.25);">
+            <span>⚡ ย้ายเฉพาะลูกค้าเก่า (${olderTimeLabel} · ${olderCount} จาน)</span>
+            <span style="font-size:12px;background:rgba(0,0,0,.18);padding:3px 8px;border-radius:6px;">ทิ้งชุด ${latestTime} ไว้โต๊ะ ${escHtml(oldName)}</span>
+          </button>
+        `;
+    }
+    if (opts && opts.focusOrderId) {
+        const focusItem = items.find(it => it.type === 'pending' && it.key === opts.focusOrderId);
+        if (focusItem) {
+            quickBtnsHtml += `
+              <button id="smQuickSingleBtn" style="background:#8e44ad;color:#fff;border:none;padding:11px 14px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;">
+                <span>🎯 ย้ายเฉพาะ "${escHtml(focusItem.item)} ×${focusItem.quantity}" (รายการที่แตะ)</span>
+                <span style="font-size:12px;background:rgba(0,0,0,.18);padding:3px 8px;border-radius:6px;">1 รายการ</span>
+              </button>
+            `;
+        }
+    }
+    const allCount = items.reduce((s, x) => s + x.quantity, 0);
+    quickBtnsHtml += `
+      <button id="smQuickAllBtn" style="background:#27ae60;color:#fff;border:none;padding:11px 14px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;">
+        <span>📦 ย้ายทั้งหมดทุกรายการ (${allCount} จาน)</span>
+        <span style="font-size:12px;background:rgba(0,0,0,.18);padding:3px 8px;border-radius:6px;">โต๊ะ ${escHtml(oldName)} ว่างทันที</span>
+      </button>
+    </div>`;
+
+    // รายการให้ติ๊กเลือกเองแยกตาม Batch
+    let listHtml = `<div style="padding:12px 18px;overflow-y:auto;flex:1;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:14px;font-weight:bold;color:#555;">หรือติ๊กเลือกรายการเองด้านล่าง:</span>
+        <div style="display:flex;gap:6px;">
+          <button type="button" id="smSelectAllChk" style="font-size:12px;padding:4px 9px;border-radius:6px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;">เลือกทั้งหมด</button>
+          <button type="button" id="smClearAllChk" style="font-size:12px;padding:4px 9px;border-radius:6px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;">ล้างที่เลือก</button>
+        </div>
+      </div>`;
+
+    batches.forEach((b, bIdx) => {
+        const isLast = (bIdx === batches.length - 1);
+        const badgeText = hasMultipleBatches
+            ? (isLast ? '🆕 ชุดล่าสุด' : `🕒 ชุดที่ ${bIdx + 1} (สั่งก่อน)`)
+            : '🕒 รายการในโต๊ะ';
+        const badgeBg = hasMultipleBatches ? (isLast ? '#e8f8f5' : '#fef5e7') : '#f4f6f7';
+        const badgeBorder = hasMultipleBatches ? (isLast ? '#27ae60' : '#e67e22') : '#bdc3c7';
+
+        listHtml += `
+          <div style="border:2px solid ${badgeBorder};background:${badgeBg};border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="font-size:15px;font-weight:bold;color:#2c3e50;">
+                ${badgeText} · เวลา ${formatBatchTime(b.firstMs)}
+              </div>
+              <button type="button" class="sm-batch-toggle" data-batch="${bIdx}" style="font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid #888;background:#fff;cursor:pointer;font-weight:bold;">
+                สลับชุดนี้
+              </button>
+            </div>
+        `;
+
+        b.items.forEach(it => {
+            const uid = it.type + ':' + it.key;
+            const checked = defaultSelectedKeys.has(uid) ? 'checked' : '';
+            const statusBadge = it.type === 'completed'
+                ? '<span style="font-size:11px;background:#d4edda;color:#155724;padding:2px 6px;border-radius:4px;margin-left:6px;">✅ เสิร์ฟแล้ว</span>'
+                : (it.status === 'ready'
+                    ? '<span style="font-size:11px;background:#d4edda;color:#155724;padding:2px 6px;border-radius:4px;margin-left:6px;">พร้อมส่ง</span>'
+                    : '<span style="font-size:11px;background:#fff3cd;color:#856404;padding:2px 6px;border-radius:4px;margin-left:6px;">⏳ ในคิว</span>');
+            const cmt = it.comment ? ` <span style="color:#d35400;font-size:13px;">(${escHtml(it.comment)})</span>` : '';
+
+            listHtml += `
+              <label style="display:flex;align-items:center;gap:10px;padding:7px 8px;background:#fff;border-radius:8px;margin-top:5px;cursor:pointer;border:1px solid #eee;">
+                <input type="checkbox" class="sm-item-chk" data-uid="${escHtml(uid)}" data-batch="${bIdx}" ${checked} style="width:20px;height:20px;cursor:pointer;">
+                <div style="flex:1;font-size:16px;color:#2c3e50;">
+                  <b>${escHtml(it.item)}</b> ×${it.quantity}${cmt}${statusBadge}
+                </div>
+                <div style="font-size:12px;color:#888;">${formatBatchTime(it.ms)}</div>
+              </label>
+            `;
+        });
+
+        listHtml += `</div>`;
+    });
+    listHtml += `</div>`;
+
+    const footerHtml = `
+      <div style="padding:12px 18px;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;gap:10px;align-items:center;justify-content:space-between;">
+        <button type="button" id="smCancelBtn" style="padding:11px 18px;border-radius:10px;border:1px solid #ccc;background:#fff;color:#555;font-size:16px;font-weight:bold;cursor:pointer;">ยกเลิก</button>
+        <button type="button" id="smConfirmCustomBtn" style="flex:1;padding:12px 18px;border-radius:10px;border:none;background:#2980b9;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;">
+          ✅ ย้ายเฉพาะรายการที่ติ๊กเลือก
+        </button>
+      </div>
+    `;
+
+    box.innerHTML = headerHtml + quickBtnsHtml + listHtml + footerHtml;
+    wrap.appendChild(box);
+    document.body.appendChild(wrap);
+
+    const updateConfirmBtnText = () => {
+        const checkedChks = box.querySelectorAll('.sm-item-chk:checked');
+        const btn = box.querySelector('#smConfirmCustomBtn');
+        if (btn) {
+            btn.textContent = checkedChks.length > 0
+                ? `✅ ย้ายรายการที่ติ๊กเลือก (${checkedChks.length} รายการ) ไปโต๊ะ ${newName}`
+                : `กรุณาติ๊กเลือกรายการที่จะย้าย`;
+            btn.style.opacity = checkedChks.length > 0 ? '1' : '0.5';
+        }
+    };
+    updateConfirmBtnText();
+
+    box.querySelectorAll('.sm-item-chk').forEach(chk => {
+        chk.onchange = updateConfirmBtnText;
+    });
+
+    box.querySelectorAll('.sm-batch-toggle').forEach(btn => {
+        btn.onclick = () => {
+            const bIdx = btn.getAttribute('data-batch');
+            const chks = Array.from(box.querySelectorAll(`.sm-item-chk[data-batch="${bIdx}"]`));
+            const allChecked = chks.every(c => c.checked);
+            chks.forEach(c => { c.checked = !allChecked; });
+            updateConfirmBtnText();
+        };
+    });
+
+    const selAllBtn = box.querySelector('#smSelectAllChk');
+    if (selAllBtn) selAllBtn.onclick = () => {
+        box.querySelectorAll('.sm-item-chk').forEach(c => { c.checked = true; });
+        updateConfirmBtnText();
+    };
+    const clrAllBtn = box.querySelector('#smClearAllChk');
+    if (clrAllBtn) clrAllBtn.onclick = () => {
+        box.querySelectorAll('.sm-item-chk').forEach(c => { c.checked = false; });
+        updateConfirmBtnText();
+    };
+
+    box.querySelector('#smCloseBtn').onclick = closeSmartMoveModal;
+    box.querySelector('#smCancelBtn').onclick = closeSmartMoveModal;
+
+    // ปุ่มด่วน 1: ย้ายเฉพาะชุดเก่า (ทิ้งชุดล่าสุดไว้โต๊ะเดิม)
+    const olderBtn = box.querySelector('#smQuickOlderBtn');
+    if (olderBtn) {
+        olderBtn.onclick = async () => {
+            closeSmartMoveModal();
+            await executeSelectedTableMove(oldName, newName, olderBatchesItems, items.length);
+        };
+    }
+
+    // ปุ่มด่วน 2: ย้ายเฉพาะ 1 รายการที่แตะจากตารางคิว
+    const singleBtn = box.querySelector('#smQuickSingleBtn');
+    if (singleBtn) {
+        singleBtn.onclick = async () => {
+            const focusItem = items.find(it => it.type === 'pending' && it.key === opts.focusOrderId);
+            closeSmartMoveModal();
+            if (focusItem) await executeSelectedTableMove(oldName, newName, [focusItem], items.length);
+        };
+    }
+
+    // ปุ่มด่วน 3: ย้ายทั้งหมด
+    box.querySelector('#smQuickAllBtn').onclick = async () => {
+        closeSmartMoveModal();
+        await moveAllTableData(oldName, newName);
+    };
+
+    // ปุ่มยืนยันตามที่ติ๊กเลือก
+    box.querySelector('#smConfirmCustomBtn').onclick = async () => {
+        const selectedUids = new Set(
+            Array.from(box.querySelectorAll('.sm-item-chk:checked')).map(c => c.getAttribute('data-uid'))
+        );
+        if (selectedUids.size === 0) {
+            alert('กรุณาติ๊กเลือกรายการอาหารที่ต้องการย้ายอย่างน้อย 1 รายการครับ');
+            return;
+        }
+        const chosen = items.filter(it => selectedUids.has(it.type + ':' + it.key));
+        closeSmartMoveModal();
+        if (chosen.length === items.length) {
+            await moveAllTableData(oldName, newName);
+        } else {
+            await executeSelectedTableMove(oldName, newName, chosen, items.length);
+        }
+    };
+}
+
+// ย้ายเฉพาะรายการที่เลือก (Partial Move) + จัดการจำนวนคนทั้งโต๊ะเก่าและโต๊ะใหม่ให้ถูกต้อง
+async function executeSelectedTableMove(oldName, newName, selectedItems, totalItemsCount) {
+    try {
+        const oldKey = fbKeySafe(oldName), newKey = fbKeySafe(newName);
+        if (!oldKey || !newKey || oldName === newName || !selectedItems.length) return;
+
+        const newLcSnap = await db.ref(POS_PATH + 'lastClosed/' + newKey).once('value');
+        const newClosedMs = tsMs(newLcSnap.val() || '');
+        const minValidTs = newClosedMs > 0 ? localStamp(new Date(newClosedMs + 10)) : '';
+
+        const orderUpdates = {};
+        const compUpdates = {};
+
+        selectedItems.forEach(it => {
+            if (it.type === 'pending') {
+                orderUpdates[it.key + '/table'] = newName;
+                if (newClosedMs > 0 && tsMs(it.timestamp) <= newClosedMs) {
+                    orderUpdates[it.key + '/timestamp'] = minValidTs;
+                }
+            } else if (it.type === 'completed') {
+                compUpdates[it.key + '/table'] = newName;
+                if (newClosedMs > 0 && tsMs(it.timestamp) <= newClosedMs) {
+                    compUpdates[it.key + '/timestamp'] = minValidTs;
+                }
+            }
+        });
+
+        if (Object.keys(orderUpdates).length > 0) {
+            await db.ref(BASE_PATH + 'orders').update(orderUpdates);
+        }
+        if (Object.keys(compUpdates).length > 0) {
+            await db.ref(BASE_PATH + 'completedOrders').update(compUpdates);
+        }
+
+        // จัดการจำนวนคน (Guest Count):
+        // ถ้าย้ายบางส่วน (เช่น ลูกค้าเก่าย้ายไป 21 แต่ลูกค้าใหม่ยังอยู่ 11):
+        // 1. ย้ายจำนวนคนของรอบเดิมจาก 11 ไป 21
+        // 2. ถามจำนวนคนของลูกค้าใหม่ที่ยังนั่งอยู่ที่โต๊ะ 11 ทันที เพื่อบันทึกแยกกันให้ครบถ้วน
+        if (isDineInTable(oldName) && isDineInTable(newName)) {
+            await moveGuestRound(oldName, newName);
+            if (selectedItems.length < totalItemsCount) {
+                const n = await askGuestModal(oldName, 0, {
+                    subtitle: `ย้ายออเดอร์เก่าไป โต๊ะ ${newName} เรียบร้อยแล้ว`,
+                    title: `แล้วลูกค้าใหม่ที่ โต๊ะ ${oldName} กี่คนครับ?`,
+                    cancelText: 'ข้ามไปก่อน',
+                    note: `ระบุจำนวนคนของลูกค้าใหม่ที่นั่งอยู่ โต๊ะ ${oldName}`
+                });
+                if (n != null && n > 0) {
+                    const ref = tableSeatingsRef(oldName);
+                    if (ref) {
+                        const oldLcSnap = await db.ref(POS_PATH + 'lastClosed/' + oldKey).once('value');
+                        const closedAt = oldLcSnap.val() || '';
+                        const stamp = localStamp();
+                        const staffName = localStorage.getItem('staff_name') || '';
+                        const rec = { count: n, startTs: stamp, lastTs: stamp, table: String(oldName), afterClosedAt: closedAt };
+                        if (staffName) rec.staff = staffName;
+                        await ref.push(rec);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        alert('ย้ายรายการไม่สำเร็จ: ' + (e && e.message));
+    }
+}
+/* ================= จบระบบย้ายโต๊ะอัจฉริยะ ================= */
 
 // ✅ FIX: ย้ายข้อมูลโต๊ะแบบครบวงจร (orders, completedOrders รอบปัจจุบัน, guestCounts, billing_requests)
 // และปรับ timestamp หากโต๊ะปลายทางเพิ่งปิดบิลไปเมื่อไม่นานในวันเดียวกัน เพื่อไม่ให้เครื่องเก็บเงินมองข้ามว่าเป็นรอบเก่าของโต๊ะปลายทาง
