@@ -1905,7 +1905,7 @@ function serveOnePlate(o, oldQty, removeIndex, doneUnits) {
     }
     const newDoneUnits = reindexDoneUnits(doneUnits || {}, oldQty, removeIndex);
     const doneCount = Object.keys(newDoneUnits).filter(k => newDoneUnits[k] === true).length;
-    const allDone = doneCount === newQty;
+    const allDone = o.status === 'ready' || doneCount === newQty;
     db.ref(BASE_PATH + 'orders/' + o.id).update({
         quantity: newQty,
         doneUnits: newDoneUnits,
